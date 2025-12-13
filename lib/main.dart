@@ -88,12 +88,12 @@ class _MainScreenState extends State<MainScreen> {
 
   // 1. 切换角色
   void _toggleRole() {
+    if (_isLoading) return; // 防止在加载时重复切换
     setState(() {
       _isConsumerMode = !_isConsumerMode;
-      // 切换角色后，清空并重新加载对应的信息流
-      _feedItems.clear();
-      _loadFeedData();
     });
+    // 状态改变后，触发数据重新加载
+    _loadFeedData();
   }
 
   // 2. 加载数据 (调用 Mock API)
