@@ -45,5 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- START: TikTok登录所需配置 -->
+    <key>TikTokAppID</key>
+    <string>YOUR_CLIENT_KEY</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>tiktokopensdk</string>
+        <string>tiktoksharesdk</string>
+    </array>
+    <!-- END: TikTok登录所需配置 -->
 </dict>
 </plist>

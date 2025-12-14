@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'profile_screen.dart'; // 导入新的用户中心页面
 
 void main() {
   runApp(const MyApp());
@@ -130,7 +131,10 @@ class _MainScreenState extends State<MainScreen> {
   // 5. 点击个人主页
   void _onProfileTap() {
     print("UI交互: 跳转到个人主页");
-    // Navigator.push(context, ...)
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+    );
   }
 
   // --- UI 构建 ---

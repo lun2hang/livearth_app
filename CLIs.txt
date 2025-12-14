@@ -1,0 +1,3 @@
+open -a Simulator
+flutter devices
+flutter run
