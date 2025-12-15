@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tiktok_sdk_flutter/tiktok_sdk_flutter.dart'; // 导入TikTok SDK
+import 'package:google_sign_in/google_sign_in.dart';
+import 'tiktok_auth_screen.dart';
 
 /// 登录和注册页面
 class LoginScreen extends StatelessWidget {
@@ -46,7 +47,23 @@ class LoginScreen extends StatelessWidget {
                     text: '使用 Google 登录',
                     // 使用自定义的 Widget 作为图标
                     iconWidget: const Text('G', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black54)),
-                    onPressed: () => print("UI交互: 点击 Google 登录"),
+                    onPressed: () async {
+                      try {
+                        final GoogleSignIn googleSignIn = GoogleSignIn();
+                        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+                        if (googleUser != null) {
+                          print("流程: Google 登录成功！");
+                          print("用户名: ${googleUser.displayName}");
+                          print("邮箱: ${googleUser.email}");
+                          // 在这里，您可以获取认证信息并发送到您的后端服务器
+                        } else {
+                          print("流程: 用户取消了 Google 登录");
+                        }
+                      } catch (error) {
+                        print("流程: Google 登录出错: $error");
+                      }
+                    },
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
                     isOutlined: true,
@@ -65,25 +82,16 @@ class LoginScreen extends StatelessWidget {
                   _buildSocialLoginButton(
                     text: '使用 TikTok 登录',
                     icon: Icons.music_note,
-                    onPressed: () async { // 将方法标记为 async
-                      // 设置SDK，只需要在第一次调用前设置一次
-                      await TikTokSDK.instance.setup(clientKey: 'YOUR_CLIENT_KEY');
-                      
-                      // 定义授权范围，'user.info.basic' 是获取用户基本信息所必需的
-                      final result = await TikTokSDK.instance.login(
-                        scopes: {
-                          Scope.userInfoBasic,
-                        },
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const TikTokAuthScreen()),
                       );
-                      
-                      // 检查登录结果
-                      if (result.status == LoginStatus.success) {
-                        print("流程: TikTok 登录成功！AuthCode: ${result.authCode}");
-                        // 登录成功后，您会得到一个 authCode。
-                        // 您需要将这个 authCode 发送到您的服务器，由服务器与TikTok服务器交换以获取access_token和用户信息。
-                        // 接下来可以执行登录成功后的逻辑，例如关闭登录流程回到主页。
-                      } else {
-                        print("流程: TikTok 登录失败或取消。状态: ${result.status}, 错误: ${result.errorMessage}");
+
+                      if (result == true) {
+                        print("流程: TikTok 登录成功！准备跳转到主页...");
+                        // 在这里可以执行登录成功后的逻辑，例如关闭登录流程回到主页
                       }
                     },
                     backgroundColor: Colors.black,
