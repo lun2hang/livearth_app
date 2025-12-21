@@ -93,6 +93,7 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _isConsumerMode = !_isConsumerMode;
     });
+    print("UI交互: 切换角色 -> ${_isConsumerMode ? '消费者' : '供给者'}");
     // 状态改变后，触发数据重新加载
     _loadFeedData();
   }
