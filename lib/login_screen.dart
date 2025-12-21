@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'profile_screen.dart';
 
 /// 登录和注册页面
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +23,13 @@ class LoginScreen extends StatelessWidget {
         elevation: 1,
       ),
       backgroundColor: Colors.grey[100],
-      body: Column(
+      body: _buildLoginView(),
+    );
+  }
+
+  // 构建原来的登录页面
+  Widget _buildLoginView() {
+    return Column(
         children: [
           // [区域 1] 上半部分: 第三方登录
           Expanded(
@@ -31,14 +45,18 @@ class LoginScreen extends StatelessWidget {
                     iconWidget: const Text('G', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black54)),
                     onPressed: () async {
                       try {
-                        final GoogleSignIn googleSignIn = GoogleSignIn();
-                        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+                        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
                         if (googleUser != null) {
                           print("流程: Google 登录成功！");
                           print("用户名: ${googleUser.displayName}");
                           print("邮箱: ${googleUser.email}");
                           // 在这里，您可以获取认证信息并发送到您的后端服务器
+                          if (mounted) {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (context) => ProfileScreen(user: googleUser)),
+                            );
+                          }
                         } else {
                           print("流程: 用户取消了 Google 登录");
                         }
@@ -73,8 +91,7 @@ class LoginScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   // 构建社交登录按钮的辅助方法

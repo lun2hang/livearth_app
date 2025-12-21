@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart'; // 导入新的登录页面
 
 /// 用户中心页面 (未登录状态)
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final GoogleSignInAccount? user;
+
+  const ProfileScreen({super.key, this.user});
 
   @override
   Widget build(BuildContext context) {

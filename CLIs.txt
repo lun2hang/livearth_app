@@ -1,3 +1,6 @@
 open -a Simulator
 flutter devices
 flutter run
+
+bundleID
+com.example.livearthApp

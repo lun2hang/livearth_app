@@ -54,10 +54,12 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>REPLACE_ME_WITH_YOUR_REVERSED_CLIENT_ID</string>
+				<string>com.googleusercontent.apps.566806784200-ori5dcj03butsvag9q2a0f6a6org0be6</string>
 			</array>
 		</dict>
 	</array>
 	<!-- END: Google Sign-In Required Configuration -->
+	<key>GIDClientID</key>
+	<string>566806784200-ori5dcj03butsvag9q2a0f6a6org0be6.apps.googleusercontent.com</string>
 </dict>
 </plist>
