@@ -3,10 +3,41 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart'; // 导入新的登录页面
 
 /// 用户中心页面 (未登录状态)
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final GoogleSignInAccount? user;
 
   const ProfileScreen({super.key, this.user});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  GoogleSignInAccount? _currentUser;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = widget.user;
+    // 关键修复：如果没有传入用户（例如重启App后），尝试静默登录以恢复会话
+    if (_currentUser == null) {
+      _googleSignIn.signInSilently().then((user) {
+        if (mounted && user != null) {
+          setState(() {
+            _currentUser = user;
+          });
+        }
+      });
+    }
+  }
+
+  Future<void> _handleSignOut() async {
+    await _googleSignIn.disconnect();
+    setState(() {
+      _currentUser = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,17 +56,53 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Center(
-              child: ElevatedButton(
+              child: _currentUser != null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_currentUser!.photoUrl != null)
+                          CircleAvatar(
+                            backgroundImage:
+                                NetworkImage(_currentUser!.photoUrl!),
+                            radius: 40,
+                          )
+                        else
+                          const CircleAvatar(
+                            radius: 40,
+                            child: Icon(Icons.person, size: 40),
+                          ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _currentUser!.displayName ?? '无昵称',
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          _currentUser!.email,
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: _handleSignOut,
+                          child: const Text('退出登录'),
+                        ),
+                      ],
+                    )
+                  : ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                   textStyle: const TextStyle(fontSize: 16),
                 ),
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => const LoginScreen()),
                   );
+                  if (result != null && result is GoogleSignInAccount) {
+                    setState(() => _currentUser = result);
+                  }
                 },
                 child: const Text('登录 / 注册'),
               ),

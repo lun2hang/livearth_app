@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'profile_screen.dart';
 
 /// 登录和注册页面
 class LoginScreen extends StatefulWidget {
@@ -53,9 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           print("邮箱: ${googleUser.email}");
                           // 在这里，您可以获取认证信息并发送到您的后端服务器
                           if (mounted) {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (context) => ProfileScreen(user: googleUser)),
-                            );
+                            Navigator.of(context).pop(googleUser);
                           }
                         } else {
                           print("流程: 用户取消了 Google 登录");
