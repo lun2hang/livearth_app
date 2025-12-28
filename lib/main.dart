@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'profile_screen.dart'; // 导入新的用户中心页面
 import 'search_screen.dart'; // 导入搜索页面
+import 'publish_task_screen.dart'; // 导入需求发布页
+import 'publish_supply_screen.dart'; // 导入供给发布页
 
 void main() {
   runApp(const MyApp());
@@ -124,11 +126,15 @@ class _MainScreenState extends State<MainScreen> {
   // 4. 点击加号 (发布)
   void _onAddTap() {
     if (_isConsumerMode) {
-      print("UI交互: 弹出'发布需求'表单");
-      MockAPI.publishTask("新发布的需求");
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PublishTaskScreen()),
+      );
     } else {
-      print("UI交互: 弹出'发布供给'表单");
-      MockAPI.publishSupply("新发布的供给");
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PublishSupplyScreen()),
+      );
     }
   }
 
