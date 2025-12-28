@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'profile_screen.dart'; // 导入新的用户中心页面
+import 'search_screen.dart'; // 导入搜索页面
 
 void main() {
   runApp(const MyApp());
@@ -112,10 +113,12 @@ class _MainScreenState extends State<MainScreen> {
 
   // 3. 点击搜索
   void _onSearchTap() {
-    print("UI交互: 跳转到搜索页");
-    // 这里未来会使用 Navigator.push 跳转到搜索页面
-    // 传递参数: targetLibrary = _isConsumerMode ? '供给库' : '任务库'
-    MockAPI.search("测试搜索", _isConsumerMode);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SearchScreen(isConsumerMode: _isConsumerMode),
+      ),
+    );
   }
 
   // 4. 点击加号 (发布)
