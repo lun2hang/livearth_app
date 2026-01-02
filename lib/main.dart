@@ -48,8 +48,14 @@ class MockAPI {
   static Future<void> publishTask(Task task) async {
     final dio = DioClient().dio;
     try {
-      await dio.post('/tasks', data: task.toJson());
-      print("API调用: 发布需求成功 -> ${task.title}");
+      // 调用 /create 接口，is_consumer=true 代表发布需求
+      final response = await dio.post(
+        '/create',
+        data: task.toJson(),
+        queryParameters: {'is_consumer': true},
+      );
+      // 3. 获得返回值，并 print 出来
+      print("API响应 (Task): ${response.data}");
     } catch (e) {
       print("API调用: 发布需求失败 -> $e");
     }
@@ -59,8 +65,14 @@ class MockAPI {
   static Future<void> publishSupply(Supply supply) async {
     final dio = DioClient().dio;
     try {
-      await dio.post('/supplies', data: supply.toJson());
-      print("API调用: 发布供给成功 -> ${supply.title}");
+      // 调用 /create 接口，is_consumer=false 代表发布供给
+      final response = await dio.post(
+        '/create',
+        data: supply.toJson(),
+        queryParameters: {'is_consumer': false},
+      );
+      // 3. 获得返回值，并 print 出来
+      print("API响应 (Supply): ${response.data}");
     } catch (e) {
       print("API调用: 发布供给失败 -> $e");
     }

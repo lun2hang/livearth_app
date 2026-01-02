@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'date_time_picker.dart'; // 导入时间选择器
+import 'models/task.dart';
+import 'main.dart'; // 导入 MockAPI
 
 class PublishTaskScreen extends StatefulWidget {
   const PublishTaskScreen({super.key});
@@ -26,20 +28,35 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
     super.dispose();
   }
 
-  void _handlePublish() {
-    // [需求 5] 点击发布需求后，模拟上传数据并返回
-    print("UI交互: 点击发布需求");
-    print("标题: ${_titleController.text}");
-    print("POI: (未选择)");
-    if (_selectedDurationType == 0) {
-      print("时效: 5分钟有效");
-    } else {
-      print("时效: 自定义时间 ($_startTime 至 $_endTime)");
-    }
-    print("正文: ${_bodyController.text}");
+  Future<void> _handlePublish() async {
+    // 1. 将用户输入存储到 Task 类型变量中
+    // 注意：部分字段目前 UI 没有对应输入框，使用默认值或随机生成
+    final newTask = Task(
+      id: "task_${DateTime.now().millisecondsSinceEpoch}", // 临时生成唯一ID
+      userId: "user_current", // 暂定当前用户
+      title: _titleController.text.isEmpty ? "未命名需求" : _titleController.text,
+      description: _bodyController.text,
+      lat: 35.6595, // 默认经纬度 (东京)
+      lng: 139.7005,
+      budget: 50.0, // 默认预算
+      status: "pending",
+      createdAt: DateTime.now().toIso8601String(),
+      // 如果是默认5分钟，则动态计算；否则使用选择的时间
+      validFrom: _selectedDurationType == 0 
+          ? DateTime.now().toIso8601String() 
+          : _startTime.toIso8601String(),
+      validTo: _selectedDurationType == 0 
+          ? DateTime.now().add(const Duration(minutes: 5)).toIso8601String() 
+          : _endTime.toIso8601String(),
+    );
+
+    // 2. 通过 Dio 真实调用 FastAPI
+    await MockAPI.publishTask(newTask);
 
     // 返回首页
-    Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
