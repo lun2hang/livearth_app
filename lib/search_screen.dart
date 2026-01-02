@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'main.dart';
+import 'models/task.dart';
+import 'models/supply.dart';
 
 class SearchScreen extends StatefulWidget {
   final bool isConsumerMode;
@@ -12,8 +15,9 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   bool _hasText = false;
-  List<String> _searchResults = [];
+  List<dynamic> _searchResults = [];
   bool _hasSearched = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -32,18 +36,26 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  void _onSearch() {
+  Future<void> _onSearch() async {
     // 使用 _hasText 状态判断，确保与右上角按钮的逻辑完全一致
     if (_hasText) {
       // [需求 1] 点击搜索后隐藏键盘
       FocusScope.of(context).unfocus();
 
-      print("UI交互: 执行搜索 -> ${_controller.text} (模式: ${widget.isConsumerMode ? '消费者' : '供给者'})");
-      // [需求 2] 模拟生成搜索结果列表
       setState(() {
+        _isLoading = true;
         _hasSearched = true;
-        _searchResults = List.generate(10, (index) => "搜索结果 #$index: ${_controller.text} 相关内容");
+        _searchResults = [];
       });
+
+      final results = await MockAPI.search(_controller.text, widget.isConsumerMode);
+
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -103,6 +115,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (!_hasSearched) {
       return Center(
         child: Column(
@@ -123,6 +139,17 @@ class _SearchScreenState extends State<SearchScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
+        final item = _searchResults[index];
+        String displayTitle = "";
+
+        if (item is Task) {
+          displayTitle = "需求 #${item.id}: ${item.title} - 预算 \$${item.budget}";
+        } else if (item is Supply) {
+          displayTitle = "供给 #${item.id}: ${item.title} - 评分 ${item.rating}";
+        } else {
+          displayTitle = item.toString();
+        }
+
         // [需求 2] 搜索结果列表样式与主页面相同
         return Container(
           height: 110,
@@ -157,7 +184,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _searchResults[index],
+                      displayTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

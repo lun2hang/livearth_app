@@ -66,9 +66,29 @@ class MockAPI {
     }
   }
 
-  // 搜索功能 (暂未实现后端对接，保留打印)
-  static void search(String query, bool searchSupplyLibrary) {
-    print("API调用: 搜索 -> 关键词: $query, 搜索库: ${searchSupplyLibrary ? '供给库' : '任务库'}");
+  // 搜索功能
+  static Future<List<dynamic>> search(String query, bool isConsumer) async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get(
+        '/search',
+        queryParameters: {
+          'q': query,
+          'is_consumer': isConsumer,
+        },
+      );
+      // 后端返回结构: {"query": "...", "target": "...", "results": [...]}
+      final List<dynamic> data = response.data['results'];
+
+      if (isConsumer) {
+        return data.map<dynamic>((json) => Supply.fromJson(json)).toList();
+      } else {
+        return data.map<dynamic>((json) => Task.fromJson(json)).toList();
+      }
+    } catch (e) {
+      print("API调用: 搜索失败 -> $e");
+      return <dynamic>[];
+    }
   }
 }
 
