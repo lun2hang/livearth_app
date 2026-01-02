@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'api/dio_client.dart';
+import 'models/task.dart';
+import 'models/supply.dart';
 import 'profile_screen.dart'; // 导入新的用户中心页面
 import 'search_screen.dart'; // 导入搜索页面
 import 'publish_task_screen.dart'; // 导入需求发布页
@@ -10,32 +13,60 @@ void main() {
 
 // ---------------------------------------------------------------------------
 // 1. Mock API 接口层 (占位符)
-// 这里定义了后端交互的契约，目前只打印日志，后续替换为 FastAPI 调用
+// 已替换为真实网络请求 (FastAPI)
 // ---------------------------------------------------------------------------
 class MockAPI {
-  // 模拟：获取任务列表 (供需双方看到的数据不同)
-  static Future<List<String>> fetchFeedItems({required bool isConsumer}) async {
-    // 模拟网络延迟
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (isConsumer) {
-      // 消费者模式下：看到的是“供给列表” (谁能帮我看)
-      return List.generate(10, (index) => "供给 #$index: 东京铁塔现场直播 - 距离 2km");
-    } else {
-      // 供给者模式下：看到的是“需求列表” (谁想看什么)
-      return List.generate(10, (index) => "需求 #$index: 想看涩谷十字路口人流 - 预算 \$10");
+  // 获取任务/供给列表
+  static Future<List<dynamic>> fetchFeedItems({required bool isConsumer}) async {
+    final dio = DioClient().dio;
+    try {
+      // 统一调用 /feed 接口，通过 query 参数区分角色
+      final response = await dio.get(
+        '/feed',
+        queryParameters: {'is_consumer': isConsumer},
+      );
+      final List<dynamic> data = response.data;
+
+      if (isConsumer) {
+        // 消费者模式下：看到的是“供给列表” (Supply)
+        return data
+            .map<dynamic>((json) => Supply.fromJson(json))
+            .toList();
+      } else {
+        // 供给者模式下：看到的是“需求列表” (Task)
+        return data
+            .map<dynamic>((json) => Task.fromJson(json))
+            .toList();
+      }
+    } catch (e) {
+      print("API 请求失败: $e");
+      return <dynamic>["加载失败，请检查网络连接"];
     }
   }
 
-  // 模拟：发布功能
-  static void publishTask(String description) {
-    print("API调用: 发布需求任务 -> $description");
+  // 发布需求
+  static Future<void> publishTask(Task task) async {
+    final dio = DioClient().dio;
+    try {
+      await dio.post('/tasks', data: task.toJson());
+      print("API调用: 发布需求成功 -> ${task.title}");
+    } catch (e) {
+      print("API调用: 发布需求失败 -> $e");
+    }
   }
 
-  static void publishSupply(String description) {
-    print("API调用: 发布供给服务 -> $description");
+  // 发布供给
+  static Future<void> publishSupply(Supply supply) async {
+    final dio = DioClient().dio;
+    try {
+      await dio.post('/supplies', data: supply.toJson());
+      print("API调用: 发布供给成功 -> ${supply.title}");
+    } catch (e) {
+      print("API调用: 发布供给失败 -> $e");
+    }
   }
 
-  // 模拟：搜索功能
+  // 搜索功能 (暂未实现后端对接，保留打印)
   static void search(String query, bool searchSupplyLibrary) {
     print("API调用: 搜索 -> 关键词: $query, 搜索库: ${searchSupplyLibrary ? '供给库' : '任务库'}");
   }
@@ -79,7 +110,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isConsumerMode = true; 
   
   // 信息流数据
-  List<String> _feedItems = [];
+  List<dynamic> _feedItems = [];
   bool _isLoading = false;
 
   @override
@@ -229,6 +260,17 @@ class _MainScreenState extends State<MainScreen> {
         padding: const EdgeInsets.only(top: 8, bottom: 80), // 底部留白给 FAB
         itemCount: _feedItems.length,
         itemBuilder: (context, index) {
+          final item = _feedItems[index];
+          String displayTitle = "";
+
+          if (item is Task) {
+            displayTitle = "需求 #${item.id}: ${item.title} - 预算 \$${item.budget}";
+          } else if (item is Supply) {
+            displayTitle = "供给 #${item.id}: ${item.title} - 评分 ${item.rating}";
+          } else {
+            displayTitle = item.toString();
+          }
+
           // 模拟卡片高度，确保一屏展示 5-6 条
           return Container(
             height: 110, // 固定高度模拟
@@ -265,7 +307,7 @@ class _MainScreenState extends State<MainScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _feedItems[index],
+                        displayTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
