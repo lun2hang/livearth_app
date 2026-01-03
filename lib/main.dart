@@ -104,6 +104,33 @@ class MockAPI {
       return <dynamic>[];
     }
   }
+
+  // 获取当前用户的发布需求历史 (Task)
+  static Future<List<Task>> fetchUserTasks() async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/history/task');
+      final List<dynamic> data = response.data;
+      return data.map((json) => Task.fromJson(json)).toList();
+    } catch (e) {
+      print("API调用: 获取需求历史失败 -> $e");
+      return [];
+    }
+  }
+
+  // 获取当前用户的发布供给历史 (Supply)
+  static Future<List<Supply>> fetchUserSupplies() async {
+    final dio = DioClient().dio;
+    try {
+      // 假设后端有对应的 /history/supply 接口，如果只有 task 接口，请根据实际情况调整
+      final response = await dio.get('/history/supply');
+      final List<dynamic> data = response.data;
+      return data.map((json) => Supply.fromJson(json)).toList();
+    } catch (e) {
+      print("API调用: 获取供给历史失败 -> $e");
+      return [];
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart'; // 导入新的登录页面
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'history_screen.dart'; // 导入历史记录页面
+import 'main.dart'; // 导入 MockAPI
 
 /// 用户中心页面 (未登录状态)
 class ProfileScreen extends StatefulWidget {
@@ -87,6 +89,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _email = null;
       _avatarUrl = null;
     });
+  }
+
+  // 处理功能按钮点击
+  Future<void> _handleGridItemTap(String title, Future<List<dynamic>> Function() fetcher) async {
+    // 1. 如果未登录，跳转登录页面
+    if (!_isLoggedIn) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+      
+      // 处理登录返回结果
+      if (result != null) {
+        if (result is GoogleSignInAccount) {
+          _updateGoogleUser(result);
+        } else if (result is Map) {
+          setState(() {
+            _userId = result['user_id'];
+            _username = result['username'];
+            _email = result['email'];
+            _avatarUrl = result['avatar'];
+          });
+        }
+      } else {
+        return; // 用户取消登录，不进行跳转
+      }
+    }
+
+    // 2. 已登录，跳转到历史页面
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HistoryScreen(title: title, onLoad: fetcher),
+        ),
+      );
+    }
   }
 
   @override
@@ -182,10 +221,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
               children: [
-                _buildGridItem(context, Icons.camera_roll_outlined, '我发布的供给'),
-                _buildGridItem(context, Icons.lightbulb_outline, '我发布的需求'),
-                _buildGridItem(context, Icons.receipt_long_outlined, '我的历史订单'),
-                _buildGridItem(context, Icons.bar_chart_outlined, '历史统计数据'),
+                _buildGridItem(context, Icons.camera_roll_outlined, '我发布的供给', 
+                  () => _handleGridItemTap('我发布的供给', MockAPI.fetchUserSupplies)),
+                
+                _buildGridItem(context, Icons.lightbulb_outline, '我发布的需求',
+                  () => _handleGridItemTap('我发布的需求', MockAPI.fetchUserTasks)),
+                
+                _buildGridItem(context, Icons.receipt_long_outlined, '我的历史订单', 
+                  () => print("UI交互: 点击 '我的历史订单'")),
+                
+                _buildGridItem(context, Icons.bar_chart_outlined, '历史统计数据', 
+                  () => print("UI交互: 点击 '历史统计数据'")),
               ],
             ),
           ),
@@ -210,12 +256,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // 构建网格按钮的辅助方法
-  Widget _buildGridItem(BuildContext context, IconData icon, String label) {
+  Widget _buildGridItem(BuildContext context, IconData icon, String label, VoidCallback onTap) {
     return InkWell(
-      onTap: () {
-        print("UI交互: 点击 '$label'");
-        // 后续实现真实跳转逻辑
-      },
+      onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
