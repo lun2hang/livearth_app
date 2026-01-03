@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'register_screen.dart'; // 导入注册页面
+import 'livearth_login_screen.dart'; // 导入 Livearth 登录页面
 
 /// 登录和注册页面
 class LoginScreen extends StatefulWidget {
@@ -38,6 +40,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _buildSocialLoginButton(
+                    text: '使用 Livearth 登录',
+                    icon: Icons.email,
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LivearthLoginScreen()),
+                      );
+                      // 如果登录成功并返回了数据，继续向上返回给 ProfileScreen
+                      if (result != null && context.mounted) {
+                        Navigator.pop(context, result);
+                      }
+                    },
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  const SizedBox(height: 16),
                   _buildSocialLoginButton(
                     text: '使用 Google 登录',
                     // 使用自定义的 Widget 作为图标
@@ -85,6 +104,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 40.0, right: 40.0, bottom: 40.0),
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('注册 Livearth 账户'),
             ),
           ),
         ],

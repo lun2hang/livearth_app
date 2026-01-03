@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart'; // 导入新的登录页面
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// 用户中心页面 (未登录状态)
 class ProfileScreen extends StatefulWidget {
@@ -13,29 +14,73 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  GoogleSignInAccount? _currentUser;
+  // 统一的用户信息状态
+  String? _username;
+  String? _email;
+  String? _avatarUrl;
+  
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  // 判断是否登录
+  bool get _isLoggedIn => _username != null || _email != null;
 
   @override
   void initState() {
     super.initState();
-    _currentUser = widget.user;
-    // 关键修复：如果没有传入用户（例如重启App后），尝试静默登录以恢复会话
-    if (_currentUser == null) {
-      _googleSignIn.signInSilently().then((user) {
-        if (mounted && user != null) {
-          setState(() {
-            _currentUser = user;
-          });
-        }
-      });
+    _initUserState();
+  }
+
+  Future<void> _initUserState() async {
+    // 1. 优先检查构造函数传入的 Google 用户 (通常为 null)
+    if (widget.user != null) {
+      _updateGoogleUser(widget.user!);
+      return;
     }
+
+    // 2. 检查本地安全存储 (Livearth 登录)
+    final token = await _storage.read(key: 'access_token');
+    if (token != null) {
+      final username = await _storage.read(key: 'username');
+      final email = await _storage.read(key: 'email');
+      final avatar = await _storage.read(key: 'avatar');
+      
+      if (mounted) {
+        setState(() {
+          _username = username;
+          _email = email;
+          _avatarUrl = avatar;
+        });
+      }
+      return;
+    }
+
+    // 3. 尝试 Google 静默登录
+    _googleSignIn.signInSilently().then((user) {
+      if (mounted && user != null) {
+        _updateGoogleUser(user);
+      }
+    });
+  }
+
+  void _updateGoogleUser(GoogleSignInAccount user) {
+    setState(() {
+      _username = user.displayName;
+      _email = user.email;
+      _avatarUrl = user.photoUrl;
+    });
   }
 
   Future<void> _handleSignOut() async {
+    // 清除本地存储
+    await _storage.deleteAll();
+    // 断开 Google 连接
     await _googleSignIn.disconnect();
+    
     setState(() {
-      _currentUser = null;
+      _username = null;
+      _email = null;
+      _avatarUrl = null;
     });
   }
 
@@ -56,29 +101,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(
             flex: 1,
             child: Center(
-              child: _currentUser != null
+              child: _isLoggedIn
                   ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (_currentUser!.photoUrl != null)
+                        if (_avatarUrl != null)
                           CircleAvatar(
                             backgroundImage:
-                                NetworkImage(_currentUser!.photoUrl!),
+                                NetworkImage(_avatarUrl!),
                             radius: 40,
                           )
                         else
                           const CircleAvatar(
                             radius: 40,
-                            child: Icon(Icons.person, size: 40),
+                            child: Icon(Icons.person, size: 40, color: Colors.grey),
                           ),
                         const SizedBox(height: 12),
                         Text(
-                          _currentUser!.displayName ?? '无昵称',
+                          _username ?? '无昵称',
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          _currentUser!.email,
+                          _email ?? '',
                           style:
                               TextStyle(fontSize: 14, color: Colors.grey[600]),
                         ),
@@ -100,8 +145,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     MaterialPageRoute(
                         builder: (context) => const LoginScreen()),
                   );
-                  if (result != null && result is GoogleSignInAccount) {
-                    setState(() => _currentUser = result);
+                  
+                  // 处理登录返回结果
+                  if (result != null) {
+                    if (result is GoogleSignInAccount) {
+                      _updateGoogleUser(result);
+                    } else if (result is Map) {
+                      // Livearth 登录返回的 Map 数据
+                      setState(() {
+                        _username = result['username'];
+                        _email = result['email'];
+                        _avatarUrl = result['avatar'];
+                      });
+                    }
                   }
                 },
                 child: const Text('登录 / 注册'),
