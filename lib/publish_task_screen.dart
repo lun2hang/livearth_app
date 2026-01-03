@@ -32,7 +32,7 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
     // 1. 将用户输入存储到 Task 类型变量中
     // 注意：部分字段目前 UI 没有对应输入框，使用默认值或随机生成
     final newTask = Task(
-      id: "task_${DateTime.now().millisecondsSinceEpoch}", // 临时生成唯一ID
+      id: DateTime.now().millisecondsSinceEpoch, // 临时生成唯一ID
       userId: "user_current", // 暂定当前用户
       title: _titleController.text.isEmpty ? "未命名需求" : _titleController.text,
       description: _bodyController.text,

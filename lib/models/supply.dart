@@ -1,5 +1,5 @@
 class Supply {
-  final String id;
+  final int id;
   final String userId;
   final String title;
   final String description;
@@ -25,7 +25,7 @@ class Supply {
 
   factory Supply.fromJson(Map<String, dynamic> json) {
     return Supply(
-      id: json['id'] as String,
+      id: json['id'] as int,
       userId: json['user_id'] as String,
       title: json['title'] as String,
       description: json['description'] as String,

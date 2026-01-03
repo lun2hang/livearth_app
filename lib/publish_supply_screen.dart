@@ -31,7 +31,7 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
   Future<void> _handlePublish() async {
     // 1. 将用户输入存储到 Supply 类型变量中
     final newSupply = Supply(
-      id: "supply_${DateTime.now().millisecondsSinceEpoch}", // 临时生成唯一ID
+      id: DateTime.now().millisecondsSinceEpoch, // 临时生成唯一ID
       userId: "user_current", // 暂定当前用户
       title: _titleController.text.isEmpty ? "未命名供给" : _titleController.text,
       description: _bodyController.text,
