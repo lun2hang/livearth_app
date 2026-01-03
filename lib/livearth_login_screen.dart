@@ -50,6 +50,7 @@ class _LivearthLoginScreenState extends State<LivearthLoginScreen> {
       const storage = FlutterSecureStorage();
       await storage.write(key: 'access_token', value: data['access_token']);
       await storage.write(key: 'token_type', value: data['token_type']);
+      await storage.write(key: 'user_id', value: data['user_id']);
       await storage.write(key: 'username', value: data['username']);
       await storage.write(key: 'email', value: data['email']);
       // 头像可能为空，做个判断

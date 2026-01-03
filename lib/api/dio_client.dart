@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class DioClient {
   static final DioClient _instance = DioClient._internal();
@@ -19,6 +20,25 @@ class DioClient {
       receiveTimeout: const Duration(seconds: 5),
       headers: {
         'Content-Type': 'application/json',
+      },
+    ));
+
+    // 添加认证拦截器：自动在请求头中携带 Token
+    dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        try {
+          const storage = FlutterSecureStorage();
+          final token = await storage.read(key: 'access_token');
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+            print("🔐 [Dio] Token 已添加到请求头: ${token.substring(0, 6)}...");
+          } else {
+            print("⚠️ [Dio] 未发现 Token，请求将不带身份信息发送");
+          }
+        } catch (e) {
+          print("❌ [Dio] 读取 Token 异常: $e");
+        }
+        return handler.next(options);
       },
     ));
 

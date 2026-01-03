@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart'; // 导入 Dio 以处理异常
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
 import 'models/task.dart';
 import 'models/supply.dart';
@@ -188,7 +189,21 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   // 4. 点击加号 (发布)
-  void _onAddTap() {
+  Future<void> _onAddTap() async {
+    // 1. 检查是否已登录
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    
+    if (token == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('请先登录以发布内容')),
+        );
+        _onProfileTap(); // 跳转到个人中心进行登录
+      }
+      return;
+    }
+
     if (_isConsumerMode) {
       Navigator.push(
         context,

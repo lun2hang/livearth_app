@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'date_time_picker.dart'; // 导入时间选择器
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PublishTaskScreen extends StatefulWidget {
   const PublishTaskScreen({super.key});
@@ -29,11 +30,14 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
   }
 
   Future<void> _handlePublish() async {
+    const storage = FlutterSecureStorage();
+    final userId = await storage.read(key: 'user_id') ?? "user_current";
+
     // 1. 将用户输入存储到 Task 类型变量中
     // 注意：部分字段目前 UI 没有对应输入框，使用默认值或随机生成
     final newTask = Task(
       id: DateTime.now().millisecondsSinceEpoch, // 临时生成唯一ID
-      userId: "user_current", // 暂定当前用户
+      userId: userId,
       title: _titleController.text.isEmpty ? "未命名需求" : _titleController.text,
       description: _bodyController.text,
       lat: 35.6595, // 默认经纬度 (东京)

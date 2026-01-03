@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'date_time_picker.dart'; // 导入时间选择器
 import 'models/supply.dart';
 import 'main.dart'; // 导入 MockAPI
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PublishSupplyScreen extends StatefulWidget {
   const PublishSupplyScreen({super.key});
@@ -29,10 +30,13 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
   }
 
   Future<void> _handlePublish() async {
+    const storage = FlutterSecureStorage();
+    final userId = await storage.read(key: 'user_id') ?? "user_current";
+
     // 1. 将用户输入存储到 Supply 类型变量中
     final newSupply = Supply(
       id: DateTime.now().millisecondsSinceEpoch, // 临时生成唯一ID
-      userId: "user_current", // 暂定当前用户
+      userId: userId,
       title: _titleController.text.isEmpty ? "未命名供给" : _titleController.text,
       description: _bodyController.text,
       lat: 35.6595, // 默认经纬度 (东京)

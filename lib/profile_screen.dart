@@ -15,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   // 统一的用户信息状态
+  String? _userId;
   String? _username;
   String? _email;
   String? _avatarUrl;
@@ -41,12 +42,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // 2. 检查本地安全存储 (Livearth 登录)
     final token = await _storage.read(key: 'access_token');
     if (token != null) {
+      final userId = await _storage.read(key: 'user_id');
       final username = await _storage.read(key: 'username');
       final email = await _storage.read(key: 'email');
       final avatar = await _storage.read(key: 'avatar');
       
       if (mounted) {
         setState(() {
+          _userId = userId;
           _username = username;
           _email = email;
           _avatarUrl = avatar;
@@ -65,6 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _updateGoogleUser(GoogleSignInAccount user) {
     setState(() {
+      _userId = user.id;
       _username = user.displayName;
       _email = user.email;
       _avatarUrl = user.photoUrl;
@@ -78,6 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _googleSignIn.disconnect();
     
     setState(() {
+      _userId = null;
       _username = null;
       _email = null;
       _avatarUrl = null;
@@ -153,6 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     } else if (result is Map) {
                       // Livearth 登录返回的 Map 数据
                       setState(() {
+                        _userId = result['user_id'];
                         _username = result['username'];
                         _email = result['email'];
                         _avatarUrl = result['avatar'];
