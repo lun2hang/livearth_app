@@ -46,9 +46,9 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!-- START: Google Sign-In Required Configuration -->
 	<key>CFBundleURLTypes</key>
 	<array>
+		<!-- Google Sign-In -->
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
@@ -57,9 +57,32 @@
 				<string>com.googleusercontent.apps.566806784200-ori5dcj03butsvag9q2a0f6a6org0be6</string>
 			</array>
 		</dict>
+		<!-- Facebook Sign-In -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fb2299002563899209</string>
+			</array>
+		</dict>
 	</array>
-	<!-- END: Google Sign-In Required Configuration -->
 	<key>GIDClientID</key>
 	<string>566806784200-ori5dcj03butsvag9q2a0f6a6org0be6.apps.googleusercontent.com</string>
+
+	<!-- Facebook Login Configuration -->
+	<key>FacebookAppID</key>
+	<string>2299002563899209</string>
+	<key>FacebookClientToken</key>
+	<string>c8f88a4a36a394e4aa81029a3a7907bb</string>
+	<key>FacebookDisplayName</key>
+	<string>Livearth</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>我们需要您的位置信息以展示您所在的城市。</string>
 </dict>
 </plist>

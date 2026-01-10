@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:dio/dio.dart';
 import 'login_screen.dart'; // 导入新的登录页面
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -23,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _username;
   String? _email;
   String? _avatarUrl;
+  String? _location;
   
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -50,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final username = await _storage.read(key: 'username');
       final email = await _storage.read(key: 'email');
       final avatar = await _storage.read(key: 'avatar');
+      final location = await _storage.read(key: 'location');
       
       if (mounted) {
         setState(() {
@@ -57,6 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _username = username;
           _email = email;
           _avatarUrl = avatar;
+          _location = location;
         });
       }
       return;
@@ -66,6 +72,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _googleSignIn.signInSilently().then((user) {
       if (mounted && user != null) {
         _authenticateWithGoogle(user);
+      } else {
+        // 4. 尝试 Facebook 静默登录 (如果 Google 未登录)
+        FacebookAuth.instance.accessToken.then((accessToken) {
+          if (mounted && accessToken != null) _authenticateWithFacebook(accessToken);
+        });
       }
     });
   }
@@ -124,17 +135,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // 新增：Facebook 登录逻辑 (参考 Google 逻辑)
+  Future<void> _authenticateWithFacebook(AccessToken accessToken) async {
+    try {
+      // [第二层] 验证层: 调用后端验证接口
+      final dio = DioClient().dio;
+      final response = await dio.post('/auth/social-login', data: {
+        'provider': 'facebook',
+        'token': accessToken.token,
+      });
+
+      // [第四层] 发放层: 获取并存储系统 JWT
+      final jwt = response.data['access_token'];
+      await _storage.write(key: 'access_token', value: jwt);
+
+      // [第五层] 业务层: 获取 Facebook 用户信息
+      final userData = await FacebookAuth.instance.getUserData();
+      
+      final username = userData['name'];
+      final email = userData['email'];
+      final avatar = userData['picture']?['data']?['url'];
+
+      // 持久化与更新 UI
+      await _storage.write(key: 'user_id', value: userData['id']);
+      if (username != null) await _storage.write(key: 'username', value: username);
+      if (email != null) await _storage.write(key: 'email', value: email);
+      if (avatar != null) await _storage.write(key: 'avatar', value: avatar);
+
+      if (mounted) {
+        setState(() {
+          _userId = userData['id'];
+          _username = username;
+          _email = email;
+          _avatarUrl = avatar;
+        });
+      }
+    } catch (e) {
+      print("Facebook 登录后端验证失败: $e");
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("登录失败: $e")));
+      await FacebookAuth.instance.logOut();
+    }
+  }
+
   Future<void> _handleSignOut() async {
     // 清除本地存储
     await _storage.deleteAll();
-    // 断开 Google 连接
+    // 断开连接
     await _googleSignIn.disconnect();
+    await FacebookAuth.instance.logOut();
     
     setState(() {
       _userId = null;
       _username = null;
       _email = null;
       _avatarUrl = null;
+      _location = null;
     });
   }
 
@@ -151,6 +206,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (result != null) {
         if (result is GoogleSignInAccount) {
           await _authenticateWithGoogle(result);
+        } else if (result is AccessToken) {
+          await _authenticateWithFacebook(result);
         } else if (result is Map) {
           setState(() {
             _userId = result['user_id'];
@@ -172,6 +229,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context) => HistoryScreen(title: title, onLoad: fetcher),
         ),
       );
+    }
+  }
+
+  // 获取当前定位
+  Future<void> _getLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw '请在系统设置中开启位置服务';
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw '位置权限被拒绝';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw '位置权限被永久拒绝，请前往设置开启';
+      }
+
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('正在定位...')));
+
+      // 获取经纬度
+      Position position = await Geolocator.getCurrentPosition();
+      
+      String locationText;
+      try {
+        // 尝试逆地理编码 (经纬度 -> 城市名)
+        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          // 优化：增加更多字段兜底 (如区/县/行政区)，防止 locality 为空
+          locationText = place.locality ?? 
+                         place.subLocality ?? 
+                         place.subAdministrativeArea ?? 
+                         place.administrativeArea ?? 
+                         place.country ?? 
+                         "未知位置";
+        } else {
+          locationText = "未知位置";
+        }
+      } catch (e) {
+        // 如果解析失败（常见于模拟器或网络不佳），兜底显示经纬度
+        locationText = "${position.latitude.toStringAsFixed(2)}, ${position.longitude.toStringAsFixed(2)}";
+      }
+      
+      await _storage.write(key: 'location', value: locationText);
+      if (mounted) setState(() => _location = locationText);
+    } catch (e) {
+      print("定位失败: $e");
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('定位失败: $e')));
     }
   }
 
@@ -241,6 +352,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (result != null) {
                     if (result is GoogleSignInAccount) {
                       await _authenticateWithGoogle(result);
+                    } else if (result is AccessToken) {
+                      await _authenticateWithFacebook(result);
                     } else if (result is Map) {
                       // Livearth 登录返回的 Map 数据
                       setState(() {
@@ -284,15 +397,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
 
           // [区域 3] 底部 1/3: 文字区域
-          const Expanded(
+          Expanded(
             flex: 1,
             child: Center(
-              child: Text(
-                'See the Livearth',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w300,
-                  color: Colors.grey,
+              child: InkWell(
+                onTap: _getLocation,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.location_on_outlined, color: Colors.grey[400], size: 28),
+                      const SizedBox(height: 8),
+                      Text(
+                        _location ?? '点击获取当前位置',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

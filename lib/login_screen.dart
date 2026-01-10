@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'register_screen.dart'; // 导入注册页面
 import 'livearth_login_screen.dart'; // 导入 Livearth 登录页面
 
@@ -90,7 +91,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildSocialLoginButton(
                     text: '使用 Facebook 登录',
                     icon: Icons.facebook,
-                    onPressed: () => print("UI交互: 点击 Facebook 登录"),
+                    onPressed: () async {
+                      try {
+                        final LoginResult result = await FacebookAuth.instance.login();
+                        if (result.status == LoginStatus.success) {
+                          print("流程: Facebook 登录成功！");
+                          if (mounted) {
+                            // 将 AccessToken 返回给 ProfileScreen
+                            Navigator.of(context).pop(result.accessToken);
+                          }
+                        } else {
+                          print("流程: Facebook 登录失败: ${result.message}");
+                        }
+                      } catch (e) {
+                        print("流程: Facebook 登录出错: $e");
+                      }
+                    },
                     backgroundColor: const Color(0xFF1877F2),
                     foregroundColor: Colors.white,
                   ),
