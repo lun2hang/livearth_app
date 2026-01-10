@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:dio/dio.dart';
@@ -177,6 +178,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // 新增：Apple 登录逻辑
+  Future<void> _authenticateWithApple(AuthorizationCredentialAppleID credential) async {
+    try {
+      // [第二层] 验证层: 调用后端验证接口
+      final dio = DioClient().dio;
+      final response = await dio.post('/auth/social-login', data: {
+        'provider': 'apple',
+        'token': credential.identityToken, // Apple 的 JWT
+      });
+
+      // [第四层] 发放层: 获取并存储系统 JWT
+      final accessToken = response.data['access_token'];
+      await _storage.write(key: 'access_token', value: accessToken);
+
+      // [第五层] 业务层: 更新本地状态
+      // 注意：Apple 仅在首次登录返回 email 和 name，后续为 null
+      final email = credential.email;
+      final familyName = credential.familyName;
+      final givenName = credential.givenName;
+      String? username;
+      if (familyName != null || givenName != null) {
+        username = "${familyName ?? ''}${givenName ?? ''}";
+      }
+
+      await _storage.write(key: 'user_id', value: credential.userIdentifier);
+      if (username != null) await _storage.write(key: 'username', value: username);
+      if (email != null) await _storage.write(key: 'email', value: email);
+
+      if (mounted) {
+        setState(() {
+          _userId = credential.userIdentifier;
+          if (username != null) _username = username;
+          if (email != null) _email = email;
+        });
+      }
+    } catch (e) {
+      print("Apple 登录后端验证失败: $e");
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("登录失败: $e")));
+    }
+  }
+
   Future<void> _handleSignOut() async {
     // 清除本地存储
     await _storage.deleteAll();
@@ -208,6 +250,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           await _authenticateWithGoogle(result);
         } else if (result is AccessToken) {
           await _authenticateWithFacebook(result);
+        } else if (result is AuthorizationCredentialAppleID) {
+          await _authenticateWithApple(result);
         } else if (result is Map) {
           setState(() {
             _userId = result['user_id'];
@@ -257,19 +301,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 获取经纬度
       Position position = await Geolocator.getCurrentPosition();
       
+      // 保存经纬度供 API 使用
+      await _storage.write(key: 'latitude', value: position.latitude.toString());
+      await _storage.write(key: 'longitude', value: position.longitude.toString());
+
       String locationText;
       try {
         // 尝试逆地理编码 (经纬度 -> 城市名)
         List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
-          // 优化：增加更多字段兜底 (如区/县/行政区)，防止 locality 为空
-          locationText = place.locality ?? 
-                         place.subLocality ?? 
-                         place.subAdministrativeArea ?? 
-                         place.administrativeArea ?? 
-                         place.country ?? 
-                         "未知位置";
+          
+          final province = place.administrativeArea ?? '';
+          final city = place.locality ?? '';
+          final district = place.subLocality ?? '';
+
+          // 拼接显示：省 + 市 + 区
+          // 逻辑：如果城市名与省名相同（如直辖市），则不重复显示城市名
+          List<String> parts = [];
+          if (province.isNotEmpty) parts.add(province);
+          if (city.isNotEmpty && city != province) parts.add(city);
+          if (district.isNotEmpty) parts.add(district);
+          
+          locationText = parts.isNotEmpty ? parts.join(' ') : (place.country ?? "未知位置");
         } else {
           locationText = "未知位置";
         }

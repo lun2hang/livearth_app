@@ -21,11 +21,25 @@ class MockAPI {
   // 获取任务/供给列表
   static Future<List<dynamic>> fetchFeedItems({required bool isConsumer}) async {
     final dio = DioClient().dio;
+    
+    final Map<String, dynamic> queryParams = {'is_consumer': isConsumer};
+
+    // 如果是供给者模式，尝试获取并传递经纬度
+    if (!isConsumer) {
+      const storage = FlutterSecureStorage();
+      final lat = await storage.read(key: 'latitude');
+      final lng = await storage.read(key: 'longitude');
+      if (lat != null && lng != null) {
+        queryParams['user_lat'] = lat;
+        queryParams['user_lng'] = lng;
+      }
+    }
+
     try {
       // 统一调用 /feed 接口，通过 query 参数区分角色
       final response = await dio.get(
         '/feed',
-        queryParameters: {'is_consumer': isConsumer},
+        queryParameters: queryParams,
       );
       final List<dynamic> data = response.data;
 
@@ -83,13 +97,27 @@ class MockAPI {
   // 搜索功能
   static Future<List<dynamic>> search(String query, bool isConsumer) async {
     final dio = DioClient().dio;
+    
+    final Map<String, dynamic> queryParams = {
+      'q': query,
+      'is_consumer': isConsumer,
+    };
+
+    // 如果是供给者模式，尝试获取并传递经纬度
+    if (!isConsumer) {
+      const storage = FlutterSecureStorage();
+      final lat = await storage.read(key: 'latitude');
+      final lng = await storage.read(key: 'longitude');
+      if (lat != null && lng != null) {
+        queryParams['user_lat'] = lat;
+        queryParams['user_lng'] = lng;
+      }
+    }
+
     try {
       final response = await dio.get(
         '/search',
-        queryParameters: {
-          'q': query,
-          'is_consumer': isConsumer,
-        },
+        queryParameters: queryParams,
       );
       // 后端返回结构: {"query": "...", "target": "...", "results": [...]}
       final List<dynamic> data = response.data['results'];

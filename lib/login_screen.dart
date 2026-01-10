@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'register_screen.dart'; // 导入注册页面
 import 'livearth_login_screen.dart'; // 导入 Livearth 登录页面
 
@@ -114,7 +115,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildSocialLoginButton(
                     text: '使用 Apple 登录',
                     icon: Icons.apple,
-                    onPressed: () => print("UI交互: 点击 Apple 登录"),
+                    onPressed: () async {
+                      try {
+                        final credential = await SignInWithApple.getAppleIDCredential(
+                          scopes: [
+                            AppleIDAuthorizationScopes.email,
+                            AppleIDAuthorizationScopes.fullName,
+                          ],
+                        );
+                        print("流程: Apple 登录成功！");
+                        if (mounted) {
+                          Navigator.of(context).pop(credential);
+                        }
+                      } catch (e) {
+                        print("流程: Apple 登录出错: $e");
+                      }
+                    },
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                   ),
