@@ -19,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _isLoading = false;
   bool _isButtonEnabled = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -123,6 +124,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.person),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return '请输入用户名';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -135,18 +140,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     prefixIcon: Icon(Icons.email),
                   ),
                   keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return '请输入邮箱';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return '请输入有效的邮箱地址';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
 
                 // 密码
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: "密码",
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                   ),
-                  obscureText: true,
+                  obscureText: _obscurePassword,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return '请输入密码';
+                    if (value.length < 6) return '密码长度不能少于6位';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 32),
 

@@ -177,6 +177,8 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    // 启动时检查 Token 有效性 (如果过期，会自动清除本地存储)
+    DioClient().checkTokenValidity();
     _loadFeedData(); // 初始化加载数据
   }
 

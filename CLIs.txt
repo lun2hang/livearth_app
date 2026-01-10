@@ -4,3 +4,6 @@ flutter run
 
 bundleID
 com.example.livearthApp
+
+
+测试帐号 wind:winddd

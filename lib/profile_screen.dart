@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:dio/dio.dart';
 import 'login_screen.dart'; // 导入新的登录页面
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'api/dio_client.dart';
 import 'history_screen.dart'; // 导入历史记录页面
 import 'main.dart'; // 导入 MockAPI
 
@@ -37,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _initUserState() async {
     // 1. 优先检查构造函数传入的 Google 用户 (通常为 null)
     if (widget.user != null) {
-      _updateGoogleUser(widget.user!);
+      await _authenticateWithGoogle(widget.user!);
       return;
     }
 
@@ -63,18 +65,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // 3. 尝试 Google 静默登录
     _googleSignIn.signInSilently().then((user) {
       if (mounted && user != null) {
-        _updateGoogleUser(user);
+        _authenticateWithGoogle(user);
       }
     });
   }
 
-  void _updateGoogleUser(GoogleSignInAccount user) {
-    setState(() {
-      _userId = user.id;
-      _username = user.displayName;
-      _email = user.email;
-      _avatarUrl = user.photoUrl;
-    });
+  // 核心修改：实现五层模型，用 Google Token 换取系统 JWT
+  Future<void> _authenticateWithGoogle(GoogleSignInAccount googleUser) async {
+    try {
+      // [第一层] Flutter 层: 获取 Google ID Token
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw Exception("无法获取 Google ID Token");
+      }
+
+      // [第二层] 验证层: 调用后端验证接口
+      final dio = DioClient().dio;
+      final response = await dio.post('/auth/social-login', data: {
+        'provider': 'google',
+        'token': idToken,
+      });
+
+      // [第四层] 发放层: 获取并存储系统 JWT
+      final accessToken = response.data['access_token'];
+      await _storage.write(key: 'access_token', value: accessToken);
+
+      // [第五层] 业务层: 更新本地状态
+      // 直接使用 Google 的信息进行显示，无需调用 /users/me
+      final username = googleUser.displayName;
+      final email = googleUser.email;
+      final avatar = googleUser.photoUrl;
+
+      // 持久化与更新 UI
+      await _storage.write(key: 'user_id', value: googleUser.id); // 仅作本地标识
+      if (username != null) await _storage.write(key: 'username', value: username);
+      await _storage.write(key: 'email', value: email);
+      if (avatar != null) await _storage.write(key: 'avatar', value: avatar);
+
+      if (mounted) {
+        setState(() {
+          _userId = googleUser.id;
+          _username = username;
+          _email = email;
+          _avatarUrl = avatar;
+        });
+      }
+    } catch (e) {
+      print("Google 登录后端验证失败: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("登录失败: $e")),
+        );
+      }
+      // 验证失败，断开 Google 连接以允许重试
+      await _googleSignIn.disconnect();
+    }
   }
 
   Future<void> _handleSignOut() async {
@@ -103,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 处理登录返回结果
       if (result != null) {
         if (result is GoogleSignInAccount) {
-          _updateGoogleUser(result);
+          await _authenticateWithGoogle(result);
         } else if (result is Map) {
           setState(() {
             _userId = result['user_id'];
@@ -193,7 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // 处理登录返回结果
                   if (result != null) {
                     if (result is GoogleSignInAccount) {
-                      _updateGoogleUser(result);
+                      await _authenticateWithGoogle(result);
                     } else if (result is Map) {
                       // Livearth 登录返回的 Map 数据
                       setState(() {
