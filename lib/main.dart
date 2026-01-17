@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart'; // 导入 Dio 以处理异常
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'api/dio_client.dart';
 import 'models/task.dart';
 import 'models/supply.dart';
+import 'models/order.dart';
 import 'profile_screen.dart'; // 导入新的用户中心页面
 import 'search_screen.dart'; // 导入搜索页面
 import 'publish_task_screen.dart'; // 导入需求发布页
@@ -161,6 +164,47 @@ class MockAPI {
       return [];
     }
   }
+
+  // 接单 (供给者接受需求)
+  static Future<bool> acceptTask(int taskId) async {
+    final dio = DioClient().dio;
+    try {
+      // POST /orders/task/{task_id}/accept
+      final response = await dio.post('/orders/task/$taskId/accept');
+      print("API响应 (Accept Task): ${response.data}");
+      return true;
+    } catch (e) {
+      print("API调用: 接单失败 -> $e");
+      return false;
+    }
+  }
+
+  // 预订 (消费者预订供给)
+  static Future<bool> bookSupply(int supplyId) async {
+    final dio = DioClient().dio;
+    try {
+      // POST /orders/supply/{supply_id}/book
+      final response = await dio.post('/orders/supply/$supplyId/book');
+      print("API响应 (Book Supply): ${response.data}");
+      return true;
+    } catch (e) {
+      print("API调用: 预订失败 -> $e");
+      return false;
+    }
+  }
+
+  // 获取当前用户的订单列表
+  static Future<List<OrderWithDetails>> fetchUserOrders() async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/orders');
+      final List<dynamic> data = response.data;
+      return data.map((json) => OrderWithDetails.fromJson(json)).toList();
+    } catch (e) {
+      print("API调用: 获取订单列表失败 -> $e");
+      return [];
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -209,10 +253,58 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     // 启动时检查 Token 有效性 (如果过期，会自动清除本地存储)
     DioClient().checkTokenValidity();
+    _initLocation(); // 启动时自动获取位置
     _loadFeedData(); // 初始化加载数据
   }
 
   // --- 逻辑方法 ---
+
+  // 0. 自动获取位置
+  Future<void> _initLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+
+      if (permission == LocationPermission.deniedForever) return;
+
+      // 获取经纬度
+      Position position = await Geolocator.getCurrentPosition();
+      
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'latitude', value: position.latitude.toString());
+      await storage.write(key: 'longitude', value: position.longitude.toString());
+
+      // 逆地理编码 (保持与 ProfileScreen 逻辑一致，以便个人中心能直接读取)
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          final province = place.administrativeArea ?? '';
+          final city = place.locality ?? '';
+          final district = place.subLocality ?? '';
+          
+          List<String> parts = [];
+          if (province.isNotEmpty) parts.add(province);
+          if (city.isNotEmpty && city != province) parts.add(city);
+          if (district.isNotEmpty) parts.add(district);
+          
+          String locationText = parts.isNotEmpty ? parts.join(' ') : (place.country ?? "未知位置");
+          await storage.write(key: 'location', value: locationText);
+        }
+      } catch (_) {}
+
+      // 获取位置后刷新列表，以便按距离排序
+      _loadFeedData();
+    } catch (e) {
+      print("自动定位失败: $e");
+    }
+  }
 
   // 1. 切换角色
   void _toggleRole() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models/supply.dart';
+import 'main.dart'; // 导入 MockAPI
 
 class SupplyDetailScreen extends StatelessWidget {
   final Supply supply;
@@ -129,6 +130,31 @@ class SupplyDetailScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: () async {
+              final success = await MockAPI.bookSupply(supply.id);
+              if (context.mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订成功！')));
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订失败，请重试')));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('立即预订', style: TextStyle(fontSize: 16)),
+          ),
         ),
       ),
     );

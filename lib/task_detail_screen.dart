@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models/task.dart';
+import 'main.dart'; // 导入 MockAPI
 
 class TaskDetailScreen extends StatelessWidget {
   final Task task;
@@ -109,6 +110,31 @@ class TaskDetailScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: () async {
+              final success = await MockAPI.acceptTask(task.id);
+              if (context.mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单成功！')));
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单失败，请重试')));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('立即接单', style: TextStyle(fontSize: 16)),
+          ),
         ),
       ),
     );

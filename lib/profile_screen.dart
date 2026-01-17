@@ -10,6 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
 import 'history_screen.dart'; // 导入历史记录页面
 import 'main.dart'; // 导入 MockAPI
+import 'order_list_screen.dart'; // 导入订单列表页面
 
 /// 用户中心页面 (未登录状态)
 class ProfileScreen extends StatefulWidget {
@@ -276,6 +277,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // 处理订单历史点击
+  Future<void> _handleOrderHistoryTap() async {
+    if (!_isLoggedIn) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+      
+      if (result != null) {
+        if (result is GoogleSignInAccount) {
+          await _authenticateWithGoogle(result);
+        } else if (result is AccessToken) {
+          await _authenticateWithFacebook(result);
+        } else if (result is Map) {
+          setState(() {
+            _userId = result['user_id'];
+            _username = result['username'];
+            _email = result['email'];
+            _avatarUrl = result['avatar'];
+          });
+        }
+      } else {
+        return;
+      }
+    }
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const OrderListScreen()),
+      );
+    }
+  }
+
   // 获取当前定位
   Future<void> _getLocation() async {
     try {
@@ -442,7 +477,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   () => _handleGridItemTap('我发布的需求', MockAPI.fetchUserTasks)),
                 
                 _buildGridItem(context, Icons.receipt_long_outlined, '我的历史订单', 
-                  () => print("UI交互: 点击 '我的历史订单'")),
+                  _handleOrderHistoryTap),
                 
                 _buildGridItem(context, Icons.bar_chart_outlined, '历史统计数据', 
                   () => print("UI交互: 点击 '历史统计数据'")),
