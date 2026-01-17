@@ -14,6 +14,7 @@ class PublishSupplyScreen extends StatefulWidget {
 class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
 
   // 0: 5分钟有效 (默认), 1: 设置有效时间
   int _selectedDurationType = 0;
@@ -26,6 +27,7 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -42,6 +44,8 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
       lat: 35.6595, // 默认经纬度 (东京)
       lng: 139.7005,
       rating: 5.0, // 初始评分
+      price: double.tryParse(_priceController.text) ?? 0.0,
+      status: "active",
       createdAt: DateTime.now().toIso8601String(),
       // 如果是默认5分钟，则动态计算；否则使用选择的时间
       validFrom: _selectedDurationType == 0 
@@ -87,6 +91,19 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
                   hintText: '填写供给标题',
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const Divider(),
+
+              // 价格输入
+              TextField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(fontSize: 16),
+                decoration: const InputDecoration(
+                  hintText: '设置价格 (¥)',
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.attach_money, color: Colors.orange),
                 ),
               ),
               const Divider(),

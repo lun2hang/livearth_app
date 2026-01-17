@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'main.dart';
 import 'models/task.dart';
 import 'models/supply.dart';
+import 'task_detail_screen.dart';
+import 'supply_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   final bool isConsumerMode;
@@ -151,64 +153,73 @@ class _SearchScreenState extends State<SearchScreen> {
         }
 
         // [需求 2] 搜索结果列表样式与主页面相同
-        return Container(
-          height: 110,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              )
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 120,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
+        return GestureDetector(
+          onTap: () {
+            if (item is Task) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
+            } else if (item is Supply) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
+            }
+          },
+          child: Container(
+            height: 110,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 120,
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.videocam, color: Colors.white),
                 ),
-                child: const Icon(Icons.videocam, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      displayTitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                        const Spacer(),
-                        Text(
-                          "刚刚",
-                          style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        displayTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    )
-                  ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                          const Spacer(),
+                          Text(
+                            "刚刚",
+                            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

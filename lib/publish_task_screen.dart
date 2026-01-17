@@ -14,6 +14,7 @@ class PublishTaskScreen extends StatefulWidget {
 class _PublishTaskScreenState extends State<PublishTaskScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
+  final TextEditingController _budgetController = TextEditingController();
 
   // 0: 5分钟有效 (默认), 1: 设置有效时间
   int _selectedDurationType = 0;
@@ -26,6 +27,7 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
+    _budgetController.dispose();
     super.dispose();
   }
 
@@ -42,7 +44,7 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
       description: _bodyController.text,
       lat: 35.6595, // 默认经纬度 (东京)
       lng: 139.7005,
-      budget: 50.0, // 默认预算
+      budget: double.tryParse(_budgetController.text) ?? 0.0,
       status: "pending",
       createdAt: DateTime.now().toIso8601String(),
       // 如果是默认5分钟，则动态计算；否则使用选择的时间
@@ -89,6 +91,19 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
                   hintText: '填写标题',
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const Divider(),
+
+              // 预算输入
+              TextField(
+                controller: _budgetController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(fontSize: 16),
+                decoration: const InputDecoration(
+                  hintText: '设置预算 (¥)',
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.attach_money, color: Colors.blue),
                 ),
               ),
               const Divider(),

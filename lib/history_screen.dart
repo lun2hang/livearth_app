@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'models/task.dart';
 import 'models/supply.dart';
+import 'task_detail_screen.dart';
+import 'supply_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   final String title;
@@ -88,6 +90,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
       child: ListTile(
+        onTap: () {
+          if (item is Task) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
+          } else if (item is Supply) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
+          }
+        },
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),

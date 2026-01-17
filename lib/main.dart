@@ -8,6 +8,8 @@ import 'profile_screen.dart'; // 导入新的用户中心页面
 import 'search_screen.dart'; // 导入搜索页面
 import 'publish_task_screen.dart'; // 导入需求发布页
 import 'publish_supply_screen.dart'; // 导入供给发布页
+import 'task_detail_screen.dart'; // 导入需求详情页
+import 'supply_detail_screen.dart'; // 导入供给详情页
 
 void main() {
   runApp(const MyApp());
@@ -377,66 +379,75 @@ class _MainScreenState extends State<MainScreen> {
           }
 
           // 模拟卡片高度，确保一屏展示 5-6 条
-          return Container(
-            height: 110, // 固定高度模拟
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                )
-              ],
-            ),
-            child: Row(
-              children: [
-                // 左侧：图片/视频占位符
-                Container(
-                  width: 120,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
+          return GestureDetector(
+            onTap: () {
+              if (item is Task) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
+              } else if (item is Supply) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
+              }
+            },
+            child: Container(
+              height: 110, // 固定高度模拟
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  // 左侧：图片/视频占位符
+                  Container(
+                    width: 120,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.videocam, color: Colors.white),
                   ),
-                  child: const Icon(Icons.videocam, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                // 右侧：信息内容
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        displayTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                          const SizedBox(width: 4),
-                          Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                          const Spacer(),
-                          Text(
-                            "刚刚",
-                            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                  const SizedBox(width: 12),
+                  // 右侧：信息内容
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          displayTitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      )
-                    ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            const Spacer(),
+                            Text(
+                              "刚刚",
+                              style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
