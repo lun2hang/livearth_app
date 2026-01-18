@@ -142,24 +142,175 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final item = _searchResults[index];
-        String displayTitle = "";
 
-        if (item is Task) {
-          displayTitle = "需求 #${item.id}: ${item.title} - 预算 \$${item.budget}";
-        } else if (item is Supply) {
-          displayTitle = "供给 #${item.id}: ${item.title} - 评分 ${item.rating}";
-        } else {
-          displayTitle = item.toString();
+        // -------------------------------------------------------
+        // [新增] 针对 Supply (供给) 的新样式 - 与首页保持一致
+        // -------------------------------------------------------
+        if (item is Supply) {
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
+            },
+            child: Container(
+              height: 120,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  // 左侧：图片/视频占位符 (使用 App 图标)
+                  Container(
+                    width: 110,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.videocam, color: Colors.white, size: 32),
+                  ),
+                  const SizedBox(width: 12),
+                  // 右侧：信息内容
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // 第一行：【提供】标题
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        // 第二行：描述
+                        Text(
+                          (item as dynamic).toJson()['description'] ?? "暂无详细描述信息...",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        // 第三行：图标展示价格，评分，距离，时间
+                        Row(
+                          children: [
+                            Icon(Icons.attach_money, size: 12, color: Colors.orange),
+                            Text("${(item as dynamic).toJson()['price'] ?? '-'}", style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.star, size: 12, color: Colors.amber),
+                            Text("${item.rating}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                            const SizedBox(width: 8),
+                            Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
+                            Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            const Spacer(),
+                            Text("刚刚", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
-        // [需求 2] 搜索结果列表样式与主页面相同
+        // -------------------------------------------------------
+        // 针对 Task (需求) 的新样式
+        // -------------------------------------------------------
+        if (item is Task) {
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
+            },
+            child: Container(
+              height: 120,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  // 左侧：图片/视频占位符
+                  Container(
+                    width: 110,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.videocam, color: Colors.white, size: 32),
+                  ),
+                  const SizedBox(width: 12),
+                  // 右侧：信息内容
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // 第一行：标题 (加粗)
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        // 第二行：详情 (描述)
+                        Text(
+                          (item as dynamic).toJson()['description'] ?? "暂无详细需求描述...",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        // 第三行：价格 距离 时间
+                        Row(
+                          children: [
+                            // 价格 (预算)
+                            Icon(Icons.attach_money, size: 12, color: Colors.red),
+                            Text("${item.budget}", style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            // 距离
+                            Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
+                            Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            const Spacer(),
+                            // 时间
+                            Text("刚刚", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // -------------------------------------------------------
+        // 其他未知类型的兜底样式
+        // -------------------------------------------------------
+        String displayTitle = item.toString();
+
         return GestureDetector(
           onTap: () {
-            if (item is Task) {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
-            } else if (item is Supply) {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
-            }
+            // 未知类型点击暂无操作
           },
           child: Container(
             height: 110,

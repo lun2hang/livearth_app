@@ -58,11 +58,27 @@ dev_dependencies:
 
   # 自动生成应用图标的工具
   flutter_launcher_icons: ^0.13.1
+  # 自动生成启动页的工具
+  flutter_native_splash: ^2.3.10
 
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "assets/icon/livearthicon.jpg"
+  image_path: "assets/icon/livearthicon.png"
+
+flutter_native_splash:
+  # 背景色 (必填)，建议设为白色或与图片边缘一致的颜色
+  color: "#ffffff"
+  # 恢复图片配置，让原生启动页显示图片
+  image: "assets/startingscreen/startingscreen.png"
+  # 开启全屏模式，隐藏状态栏，防止因状态栏高度导致的画面抖动
+  fullscreen: false
+  
+  # Android 12+ 特殊配置
+  # 建议去掉 image 配置，让 Android 12 使用默认的 Launcher Icon 作为系统启动图
+  # 这样会形成 "图标 -> 全屏大图" 的清晰过渡，而不是 "被裁剪的大图 -> 完整大图" 的抖动
+  android_12:
+    color: "#ffffff"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -76,9 +92,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/icon/
+    - assets/startingscreen/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

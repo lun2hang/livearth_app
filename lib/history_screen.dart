@@ -78,7 +78,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       iconColor = Colors.blue;
     } else if (item is Supply) {
       title = item.title;
-      subtitle = "评分: ${item.rating}";
+      subtitle = "价格: ¥${item.price} | 状态: ${item.status}";
       date = item.createdAt.split('T')[0];
       icon = Icons.camera_roll_outlined;
       iconColor = Colors.orange;
