@@ -448,9 +448,14 @@ class _MainScreenState extends State<MainScreen> {
     String timeDisplay = "未知时间";
     if (_pendingOrder != null) {
       final rawTime = _pendingOrder!.startTime ?? _pendingOrder!.createdAt;
-      // 截取 HH:mm
+      // 截取 MM-dd HH:mm
       if (rawTime.contains('T')) {
-        timeDisplay = rawTime.split('T').last.substring(0, 5);
+        final parts = rawTime.split('T');
+        final datePart = parts.first;
+        final timePart = parts.last;
+        final dateStr = datePart.length >= 10 ? datePart.substring(5) : datePart;
+        final timeStr = timePart.length >= 5 ? timePart.substring(0, 5) : timePart;
+        timeDisplay = "$dateStr $timeStr";
       }
     }
 
