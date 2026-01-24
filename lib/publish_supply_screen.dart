@@ -46,14 +46,14 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
       rating: 5.0, // 初始评分
       price: double.tryParse(_priceController.text) ?? 0.0,
       status: "active",
-      createdAt: DateTime.now().toIso8601String(),
+      createdAt: DateTime.now().toUtc().toIso8601String(),
       // 如果是默认5分钟，则动态计算；否则使用选择的时间
       validFrom: _selectedDurationType == 0 
-          ? DateTime.now().toIso8601String() 
-          : _startTime.toIso8601String(),
+          ? DateTime.now().toUtc().toIso8601String() 
+          : _startTime.toUtc().toIso8601String(),
       validTo: _selectedDurationType == 0 
-          ? DateTime.now().add(const Duration(minutes: 5)).toIso8601String() 
-          : _endTime.toIso8601String(),
+          ? DateTime.now().add(const Duration(minutes: 5)).toUtc().toIso8601String() 
+          : _endTime.toUtc().toIso8601String(),
     );
 
     // 2. 通过 Dio 真实调用 FastAPI

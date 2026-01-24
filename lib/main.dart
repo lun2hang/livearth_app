@@ -354,10 +354,9 @@ class _MainScreenState extends State<MainScreen> {
       if (o.startTime != null) {
         try {
           String timeStr = o.startTime!;
-          // 确保解析为 UTC 时间 (Python isoformat 可能不带 Z)
-          if (!timeStr.endsWith('Z')) timeStr += 'Z';
+          if (!timeStr.endsWith('Z')) timeStr += 'Z'; // 强制视为 UTC
           final startTime = DateTime.parse(timeStr);
-          if (DateTime.now().toUtc().isAfter(startTime)) {
+          if (DateTime.now().toUtc().isAfter(startTime)) { // 使用 UTC 进行比较
             return false;
           }
         } catch (_) {}
@@ -463,15 +462,14 @@ class _MainScreenState extends State<MainScreen> {
     // 格式化时间显示
     String timeDisplay = "未知时间";
     if (_pendingOrder != null) {
-      final rawTime = _pendingOrder!.startTime ?? _pendingOrder!.createdAt;
-      // 截取 MM-dd HH:mm
-      if (rawTime.contains('T')) {
-        final parts = rawTime.split('T');
-        final datePart = parts.first;
-        final timePart = parts.last;
-        final dateStr = datePart.length >= 10 ? datePart.substring(5) : datePart;
-        final timeStr = timePart.length >= 5 ? timePart.substring(0, 5) : timePart;
-        timeDisplay = "$dateStr $timeStr";
+      var rawTime = _pendingOrder!.startTime ?? _pendingOrder!.createdAt;
+      if (!rawTime.endsWith('Z')) rawTime += 'Z'; // 强制视为 UTC
+      try {
+        final localTime = DateTime.parse(rawTime).toLocal(); // 转为本地时间
+        // 格式化: MM-dd HH:mm
+        timeDisplay = "${localTime.month.toString().padLeft(2, '0')}-${localTime.day.toString().padLeft(2, '0')} ${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}";
+      } catch (_) {
+        timeDisplay = rawTime;
       }
     }
 

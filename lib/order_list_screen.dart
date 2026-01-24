@@ -87,11 +87,21 @@ class _OrderListScreenState extends State<OrderListScreen> {
             Text("金额: ¥${order.amount} | 状态: ${order.status}"),
             Text("消费者: ${order.consumer.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
             Text("供给者: ${order.provider.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-            Text("开始时间: ${(order.startTime ?? order.createdAt).split('T').join(' ').split('.')[0]}", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text("开始时间: ${_formatTime(order.startTime ?? order.createdAt)}", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           ],
         ),
         isThreeLine: true,
       ),
     );
+  }
+
+  String _formatTime(String iso) {
+    try {
+      if (!iso.endsWith('Z')) iso += 'Z';
+      final dt = DateTime.parse(iso).toLocal();
+      return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return iso;
+    }
   }
 }

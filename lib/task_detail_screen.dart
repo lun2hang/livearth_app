@@ -101,9 +101,9 @@ class TaskDetailScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow(Icons.access_time, "发布时间", task.createdAt.split('T').join(' ')),
+                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(task.createdAt)),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.timer_outlined, "有效期至", task.validTo.split('T').join(' ')),
+                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(task.validFrom)}\n至 ${_formatTime(task.validTo)}"),
                   const Divider(height: 24),
                   _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${task.lat.toStringAsFixed(4)}, ${task.lng.toStringAsFixed(4)}"),
                 ],
@@ -142,13 +142,28 @@ class TaskDetailScreen extends StatelessWidget {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 20, color: Colors.grey),
         const SizedBox(width: 8),
         Text(label, style: const TextStyle(color: Colors.grey)),
         const Spacer(),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+          textAlign: TextAlign.right,
+        ),
       ],
     );
+  }
+
+  String _formatTime(String iso) {
+    try {
+      if (!iso.endsWith('Z')) iso += 'Z';
+      final dt = DateTime.parse(iso).toLocal();
+      return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return iso;
+    }
   }
 }

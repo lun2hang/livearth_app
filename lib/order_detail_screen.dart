@@ -74,10 +74,10 @@ class OrderDetailScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildInfoRow("关联ID", "#$relatedId"),
                   const SizedBox(height: 12),
-                  _buildInfoRow("创建时间", order.createdAt.split('T').join(' ').split('.')[0]),
+                  _buildInfoRow("创建时间", _formatTime(order.createdAt)),
                   if (order.startTime != null) ...[
                     const SizedBox(height: 12),
-                    _buildInfoRow("开始时间", order.startTime!.split('T').join(' ').split('.')[0]),
+                    _buildInfoRow("开始时间", _formatTime(order.startTime!)),
                   ],
                 ],
               ),
@@ -140,5 +140,15 @@ class OrderDetailScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _formatTime(String iso) {
+    try {
+      if (!iso.endsWith('Z')) iso += 'Z';
+      final dt = DateTime.parse(iso).toLocal();
+      return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return iso;
+    }
   }
 }

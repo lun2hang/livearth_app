@@ -73,13 +73,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (item is Task) {
       title = item.title;
       subtitle = "预算: \$${item.budget} | 状态: ${item.status}";
-      date = item.createdAt.split('T')[0]; // 简单格式化日期
+      date = _formatDate(item.createdAt);
       icon = Icons.lightbulb_outline;
       iconColor = Colors.blue;
     } else if (item is Supply) {
       title = item.title;
       subtitle = "价格: ¥${item.price} | 状态: ${item.status}";
-      date = item.createdAt.split('T')[0];
+      date = _formatDate(item.createdAt);
       icon = Icons.camera_roll_outlined;
       iconColor = Colors.orange;
     }
@@ -107,5 +107,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
         isThreeLine: true,
       ),
     );
+  }
+
+  String _formatDate(String iso) {
+    try {
+      if (!iso.endsWith('Z')) iso += 'Z';
+      final dt = DateTime.parse(iso).toLocal();
+      return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return iso.split('T')[0];
+    }
   }
 }
