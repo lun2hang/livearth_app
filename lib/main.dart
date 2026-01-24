@@ -347,7 +347,23 @@ class _MainScreenState extends State<MainScreen> {
 
     final orders = await MockAPI.fetchUserOrders();
     // 筛选 status == 'created'
-    final pending = orders.where((o) => o.status == 'created').toList();
+    final pending = orders.where((o) {
+      if (o.status != 'created') return false;
+      
+      // 增加本地超时校验：如果当前时间超过开始时间，视为超时，不显示提醒
+      if (o.startTime != null) {
+        try {
+          String timeStr = o.startTime!;
+          // 确保解析为 UTC 时间 (Python isoformat 可能不带 Z)
+          if (!timeStr.endsWith('Z')) timeStr += 'Z';
+          final startTime = DateTime.parse(timeStr);
+          if (DateTime.now().toUtc().isAfter(startTime)) {
+            return false;
+          }
+        } catch (_) {}
+      }
+      return true;
+    }).toList();
     
     if (pending.isNotEmpty) {
       // 按开始时间排序，取最早的一条 (如果 startTime 为空则回退到 createdAt)
@@ -392,12 +408,12 @@ class _MainScreenState extends State<MainScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const PublishTaskScreen()),
-      );
+      ).then((_) => _loadFeedData()); // 发布后刷新列表
     } else {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const PublishSupplyScreen()),
-      );
+      ).then((_) => _loadFeedData());
     }
   }
 
@@ -407,7 +423,7 @@ class _MainScreenState extends State<MainScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ProfileScreen()),
-    );
+    ).then((_) => _checkPendingOrders()); // 从个人中心(可能操作订单)返回时刷新提醒
   }
 
   // --- UI 构建 ---
@@ -487,7 +503,7 @@ class _MainScreenState extends State<MainScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const OrderListScreen()),
-              );
+              ).then((_) => _checkPendingOrders()); // 从订单列表返回时刷新
             },
             child: const Text("查看", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
@@ -547,7 +563,7 @@ class _MainScreenState extends State<MainScreen> {
           if (item is Supply) {
             return GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item))).then((_) => _loadFeedData());
               },
               child: Container(
                 height: 120, // 稍微增加高度以容纳3行信息
@@ -631,7 +647,7 @@ class _MainScreenState extends State<MainScreen> {
           if (item is Task) {
             return GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item))).then((_) => _loadFeedData());
               },
               child: Container(
                 height: 120,
