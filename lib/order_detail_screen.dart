@@ -75,6 +75,10 @@ class OrderDetailScreen extends StatelessWidget {
                   _buildInfoRow("关联ID", "#$relatedId"),
                   const SizedBox(height: 12),
                   _buildInfoRow("创建时间", order.createdAt.split('T').join(' ').split('.')[0]),
+                  if (order.startTime != null) ...[
+                    const SizedBox(height: 12),
+                    _buildInfoRow("开始时间", order.startTime!.split('T').join(' ').split('.')[0]),
+                  ],
                 ],
               ),
             ),

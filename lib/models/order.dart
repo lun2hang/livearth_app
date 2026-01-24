@@ -23,6 +23,7 @@ class OrderWithDetails {
   final double amount;
   final String status;
   final String createdAt;
+  final String? startTime;
 
   OrderWithDetails({
     required this.id,
@@ -33,6 +34,7 @@ class OrderWithDetails {
     required this.amount,
     required this.status,
     required this.createdAt,
+    this.startTime,
   });
 
   factory OrderWithDetails.fromJson(Map<String, dynamic> json) {
@@ -49,6 +51,7 @@ class OrderWithDetails {
       amount: (json['amount'] as num).toDouble(),
       status: json['status'] as String,
       createdAt: json['created_at'] as String,
+      startTime: json['start_time'] as String?,
     );
   }
 }

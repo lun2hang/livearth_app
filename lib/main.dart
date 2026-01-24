@@ -13,6 +13,7 @@ import 'publish_task_screen.dart'; // 导入需求发布页
 import 'publish_supply_screen.dart'; // 导入供给发布页
 import 'task_detail_screen.dart'; // 导入需求详情页
 import 'supply_detail_screen.dart'; // 导入供给详情页
+import 'order_list_screen.dart'; // 导入订单列表页
 
 void main() {
   runApp(const MyApp());
@@ -244,6 +245,7 @@ class _MainScreenState extends State<MainScreen> {
   // 信息流数据
   List<dynamic> _feedItems = [];
   bool _isLoading = false;
+  OrderWithDetails? _pendingOrder; // 最早的待处理订单
 
   @override
   void initState() {
@@ -317,12 +319,46 @@ class _MainScreenState extends State<MainScreen> {
   // 2. 加载数据 (调用 Mock API)
   Future<void> _loadFeedData() async {
     setState(() => _isLoading = true);
-    final items = await MockAPI.fetchFeedItems(isConsumer: _isConsumerMode);
+    
+    // 并行请求：获取Feed流 + 检查待处理订单
+    final results = await Future.wait([
+      MockAPI.fetchFeedItems(isConsumer: _isConsumerMode),
+      _checkPendingOrders(),
+    ]);
+    
+    final items = results[0] as List<dynamic>;
+    
     if (mounted) {
       setState(() {
         _feedItems = items;
         _isLoading = false;
       });
+    }
+  }
+
+  // 新增：检查是否有状态为 created 的订单
+  Future<void> _checkPendingOrders() async {
+    // 简单检查是否登录
+    const storage = FlutterSecureStorage();
+    if (await storage.read(key: 'access_token') == null) {
+      if (mounted) setState(() => _pendingOrder = null);
+      return;
+    }
+
+    final orders = await MockAPI.fetchUserOrders();
+    // 筛选 status == 'created'
+    final pending = orders.where((o) => o.status == 'created').toList();
+    
+    if (pending.isNotEmpty) {
+      // 按开始时间排序，取最早的一条 (如果 startTime 为空则回退到 createdAt)
+      pending.sort((a, b) {
+        final timeA = a.startTime ?? a.createdAt;
+        final timeB = b.startTime ?? b.createdAt;
+        return timeA.compareTo(timeB);
+      });
+      if (mounted) setState(() => _pendingOrder = pending.first);
+    } else {
+      if (mounted && _pendingOrder != null) setState(() => _pendingOrder = null);
     }
   }
 
@@ -394,12 +430,64 @@ class _MainScreenState extends State<MainScreen> {
             Expanded(
               child: _buildFeedList(),
             ),
+
+            // [区域 2.5] 待处理订单提醒条 (固定在底部栏上方)
+            if (_pendingOrder != null) _buildPendingOrderBar(),
           ],
         ),
       ),
       
       // [区域 3] 底部横条 (自定义 BottomAppBar)
       bottomNavigationBar: _buildBottomBar(primaryColor, roleText),
+    );
+  }
+
+  // 组件：待处理订单提醒条
+  Widget _buildPendingOrderBar() {
+    // 格式化时间显示
+    String timeDisplay = "未知时间";
+    if (_pendingOrder != null) {
+      final rawTime = _pendingOrder!.startTime ?? _pendingOrder!.createdAt;
+      // 截取 HH:mm
+      if (rawTime.contains('T')) {
+        timeDisplay = rawTime.split('T').last.substring(0, 5);
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      color: Colors.green.shade50,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.video_call, color: Colors.green),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "您有一个即将开始的订单",
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 14),
+                ),
+                Text(
+                  "开始时间: $timeDisplay",
+                  style: TextStyle(fontSize: 12, color: Colors.green[700]),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const OrderListScreen()),
+              );
+            },
+            child: const Text("查看", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
