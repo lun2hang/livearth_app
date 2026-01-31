@@ -111,15 +111,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final email = googleUser.email;
       final avatar = googleUser.photoUrl;
 
+      final systemUserId = response.data['user_id'];
+
       // 持久化与更新 UI
-      await _storage.write(key: 'user_id', value: googleUser.id); // 仅作本地标识
+      await _storage.write(key: 'user_id', value: systemUserId);
       if (username != null) await _storage.write(key: 'username', value: username);
       await _storage.write(key: 'email', value: email);
       if (avatar != null) await _storage.write(key: 'avatar', value: avatar);
 
       if (mounted) {
         setState(() {
-          _userId = googleUser.id;
+          _userId = systemUserId;
           _username = username;
           _email = email;
           _avatarUrl = avatar;
@@ -158,15 +160,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final email = userData['email'];
       final avatar = userData['picture']?['data']?['url'];
 
+      final systemUserId = response.data['user_id'];
+
       // 持久化与更新 UI
-      await _storage.write(key: 'user_id', value: userData['id']);
+      await _storage.write(key: 'user_id', value: systemUserId);
       if (username != null) await _storage.write(key: 'username', value: username);
       if (email != null) await _storage.write(key: 'email', value: email);
       if (avatar != null) await _storage.write(key: 'avatar', value: avatar);
 
       if (mounted) {
         setState(() {
-          _userId = userData['id'];
+          _userId = systemUserId;
           _username = username;
           _email = email;
           _avatarUrl = avatar;
@@ -203,13 +207,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         username = "${familyName ?? ''}${givenName ?? ''}";
       }
 
-      await _storage.write(key: 'user_id', value: credential.userIdentifier);
+      final systemUserId = response.data['user_id'];
+
+      await _storage.write(key: 'user_id', value: systemUserId);
       if (username != null) await _storage.write(key: 'username', value: username);
       if (email != null) await _storage.write(key: 'email', value: email);
 
       if (mounted) {
         setState(() {
-          _userId = credential.userIdentifier;
+          _userId = systemUserId;
           if (username != null) _username = username;
           if (email != null) _email = email;
         });

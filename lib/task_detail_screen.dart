@@ -181,35 +181,41 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _buildBottomButton(),
-        ),
-      ),
+      bottomNavigationBar: _isOwner
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _buildProviderButton(),
+              ),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _isOwner ? _buildOwnerFab() : null,
     );
   }
 
-  Widget _buildBottomButton() {
-    if (_isOwner) {
-      if (['created', 'matched'].contains(widget.task.status)) {
-        return ElevatedButton(
+  Widget? _buildOwnerFab() {
+    if (['created', 'matched'].contains(widget.task.status)) {
+      return SizedBox(
+        width: MediaQuery.of(context).size.width / 3,
+        child: ElevatedButton(
           onPressed: _isLoading ? null : _handleCancel,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey[300],
             foregroundColor: Colors.black87,
-            minimumSize: const Size(double.infinity, 48),
+            minimumSize: const Size(0, 48),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           child: _isLoading
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('取消需求', style: TextStyle(fontSize: 16)),
-        );
-      } else {
-        return const SizedBox.shrink();
-      }
+        ),
+      );
     }
+    return null;
+  }
 
+  Widget _buildProviderButton() {
     return ElevatedButton(
       onPressed: () async {
         final success = await MockAPI.acceptTask(widget.task.id);

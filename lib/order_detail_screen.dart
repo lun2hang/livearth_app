@@ -1,16 +1,68 @@
 import 'package:flutter/material.dart';
 import 'models/order.dart';
+import 'main.dart'; // 导入 MockAPI
 
-class OrderDetailScreen extends StatelessWidget {
+class OrderDetailScreen extends StatefulWidget {
   final OrderWithDetails order;
 
   const OrderDetailScreen({super.key, required this.order});
 
   @override
+  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+}
+
+class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  bool _isLoading = false;
+
+  Future<void> _handleCancel() async {
+    // 弹窗确认
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+            SizedBox(height: 16),
+            Text('取消后无法恢复，您确定要取消这个订单吗？', textAlign: TextAlign.center),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('再想想'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('确定取消'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    final success = await MockAPI.cancelEntry(widget.order.id, 'order');
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('订单已取消')));
+        Navigator.pop(context, true); // 返回 true 表示状态已改变
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('取消失败，请重试')));
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isTaskOrder = order.taskId != null;
+    final isTaskOrder = widget.order.taskId != null;
     final typeLabel = isTaskOrder ? "需求订单" : "供给订单";
-    final relatedId = isTaskOrder ? order.taskId : order.supplyId;
+    final relatedId = isTaskOrder ? widget.order.taskId : widget.order.supplyId;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,16 +90,16 @@ class OrderDetailScreen extends StatelessWidget {
                   Icon(
                     Icons.check_circle_outline,
                     size: 64,
-                    color: order.status == 'completed' ? Colors.green : Colors.blue,
+                    color: widget.order.status == 'completed' ? Colors.green : Colors.blue,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "订单状态: ${order.status}",
+                    "订单状态: ${widget.order.status}",
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "¥${order.amount}",
+                    "¥${widget.order.amount}",
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
                   ),
                 ],
@@ -68,16 +120,16 @@ class OrderDetailScreen extends StatelessWidget {
                 children: [
                   const Text("基本信息", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const Divider(height: 24),
-                  _buildInfoRow("订单编号", "#${order.id}"),
+                  _buildInfoRow("订单编号", "#${widget.order.id}"),
                   const SizedBox(height: 12),
                   _buildInfoRow("订单类型", typeLabel),
                   const SizedBox(height: 12),
                   _buildInfoRow("关联ID", "#$relatedId"),
                   const SizedBox(height: 12),
-                  _buildInfoRow("创建时间", _formatTime(order.createdAt)),
-                  if (order.startTime != null) ...[
+                  _buildInfoRow("创建时间", _formatTime(widget.order.createdAt)),
+                  if (widget.order.startTime != null) ...[
                     const SizedBox(height: 12),
-                    _buildInfoRow("开始时间", _formatTime(order.startTime!)),
+                    _buildInfoRow("开始时间", _formatTime(widget.order.startTime!)),
                   ],
                 ],
               ),
@@ -97,15 +149,57 @@ class OrderDetailScreen extends StatelessWidget {
                 children: [
                   const Text("交易方信息", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const Divider(height: 24),
-                  _buildUserRow("消费者", order.consumer),
+                  _buildUserRow("消费者", widget.order.consumer),
                   const SizedBox(height: 12),
-                  _buildUserRow("供给者", order.provider),
+                  _buildUserRow("供给者", widget.order.provider),
                 ],
               ),
             ),
           ],
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: widget.order.status == 'created'
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 新增的“进入视频”按钮
+                SizedBox(
+                  width: MediaQuery.of(context).size.width / 3,
+                  child: ElevatedButton(
+                    onPressed: null, // 暂时不可点击
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade50,
+                      foregroundColor: Colors.green,
+                      disabledBackgroundColor: Colors.green.shade50,
+                      disabledForegroundColor: Colors.green,
+                      side: const BorderSide(color: Colors.green),
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('进入视频', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                // 已有的“取消订单”按钮
+                SizedBox(
+                  width: MediaQuery.of(context).size.width / 3,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleCancel,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.grey,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      elevation: 0,
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('取消订单', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -133,7 +227,7 @@ class OrderDetailScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(user.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text(user.nickname ?? user.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               Text("ID: ${user.id}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),

@@ -1,14 +1,16 @@
 class UserInfo {
   final String id;
   final String username;
+  final String? nickname;
   final String? avatar;
 
-  UserInfo({required this.id, required this.username, this.avatar});
+  UserInfo({required this.id, required this.username, this.nickname, this.avatar});
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
       id: json['id'] as String,
       username: json['username'] as String,
+      nickname: json['nickname'] as String?,
       avatar: json['avatar'] as String?,
     );
   }

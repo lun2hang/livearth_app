@@ -68,11 +68,14 @@ class _OrderListScreenState extends State<OrderListScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
       child: ListTile(
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => OrderDetailScreen(order: order)),
           );
+          if (result == true) {
+            _loadData(); // 刷新列表
+          }
         },
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -85,8 +88,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
           children: [
             const SizedBox(height: 4),
             Text("金额: ¥${order.amount} | 状态: ${order.status}"),
-            Text("消费者: ${order.consumer.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-            Text("供给者: ${order.provider.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+            Text("消费者: ${order.consumer.nickname ?? order.consumer.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+            Text("供给者: ${order.provider.nickname ?? order.provider.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
             Text("开始时间: ${_formatTime(order.startTime ?? order.createdAt)}", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           ],
         ),
