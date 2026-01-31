@@ -11,6 +11,8 @@ class Supply {
   final String createdAt;
   final String validFrom;
   final String validTo;
+  final String? nickname;
+  final String? avatar;
 
   Supply({
     required this.id,
@@ -25,6 +27,8 @@ class Supply {
     required this.createdAt,
     required this.validFrom,
     required this.validTo,
+    this.nickname,
+    this.avatar,
   });
 
   factory Supply.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,8 @@ class Supply {
       createdAt: json['created_at'] as String,
       validFrom: json['valid_from'] as String,
       validTo: json['valid_to'] as String,
+      nickname: json['nickname'] as String?,
+      avatar: json['avatar'] as String?,
     );
   }
 

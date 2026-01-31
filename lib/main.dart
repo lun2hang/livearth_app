@@ -623,7 +623,7 @@ class _MainScreenState extends State<MainScreen> {
                 });
               },
               child: Container(
-                height: 120, // 稍微增加高度以容纳3行信息
+                height: 135, // 增加高度以容纳4行信息
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -670,6 +670,11 @@ class _MainScreenState extends State<MainScreen> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                           ),
+                          // 第三行：发布者昵称
+                          Text(
+                            "供给者: ${item.nickname ?? '匿名用户'}",
+                            style: TextStyle(fontSize: 12, color: Colors.blueGrey[600]),
+                          ),
                           // 第三行：图标展示价格，评分，距离，时间
                           Row(
                             children: [
@@ -713,7 +718,7 @@ class _MainScreenState extends State<MainScreen> {
                 });
               },
               child: Container(
-                height: 120,
+                height: 135, // 增加高度以容纳4行信息
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -759,6 +764,11 @@ class _MainScreenState extends State<MainScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                          // 第三行：发布者昵称
+                          Text(
+                            "需求者: ${item.nickname ?? '匿名用户'}",
+                            style: TextStyle(fontSize: 12, color: Colors.blueGrey[600]),
                           ),
                           // 第三行：价格 距离 时间
                           Row(

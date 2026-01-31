@@ -152,7 +152,7 @@ class _SearchScreenState extends State<SearchScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item)));
             },
             child: Container(
-              height: 120,
+              height: 135,
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -199,6 +199,11 @@ class _SearchScreenState extends State<SearchScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
+                        // 第三行：发布者昵称
+                        Text(
+                          "供给者: ${item.nickname ?? '匿名用户'}",
+                          style: TextStyle(fontSize: 12, color: Colors.blueGrey[600]),
+                        ),
                         // 第三行：图标展示价格，评分，距离，时间
                         Row(
                           children: [
@@ -232,7 +237,7 @@ class _SearchScreenState extends State<SearchScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item)));
             },
             child: Container(
-              height: 120,
+              height: 135,
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -278,6 +283,11 @@ class _SearchScreenState extends State<SearchScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        // 第三行：发布者昵称
+                        Text(
+                          "需求者: ${item.nickname ?? '匿名用户'}",
+                          style: TextStyle(fontSize: 12, color: Colors.blueGrey[600]),
                         ),
                         // 第三行：价格 距离 时间
                         Row(
