@@ -113,14 +113,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _buildItemCard(dynamic item) {
     String title = "";
     String status = "";
-    String date = "";
+    String timeDisplay = "";
     Widget icon = const Icon(Icons.error);
     VoidCallback onTap = () {};
+
+    String format(String iso) {
+      try {
+        if (!iso.endsWith('Z')) iso += 'Z';
+        final dt = DateTime.parse(iso).toLocal();
+        return "${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+      } catch (_) {
+        return iso;
+      }
+    }
 
     if (item is Task) {
       title = item.title;
       status = item.status;
-      date = item.createdAt;
+      timeDisplay = "${format(item.validFrom)} 至 ${format(item.validTo)}";
       icon = const Icon(Icons.lightbulb_outline, color: Colors.blue);
       onTap = () async {
         final result = await Navigator.push(
@@ -135,7 +145,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } else if (item is Supply) {
       title = item.title;
       status = item.status;
-      date = item.createdAt;
+      timeDisplay = "${format(item.validFrom)} 至 ${format(item.validTo)}";
       icon = const Icon(Icons.camera_roll_outlined, color: Colors.orange);
       onTap = () async {
         final result = await Navigator.push(
@@ -147,12 +157,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         }
       };
     }
-
-    try {
-       if (!date.endsWith('Z')) date += 'Z';
-       final dt = DateTime.parse(date).toLocal();
-       date = "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-    } catch (_) {}
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -171,7 +175,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: icon,
         ),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(date),
+        subtitle: Text(timeDisplay, style: const TextStyle(fontSize: 12)),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(

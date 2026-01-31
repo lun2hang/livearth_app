@@ -87,7 +87,17 @@ class _OrderListScreenState extends State<OrderListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text("金额: ¥${order.amount} | 状态: ${order.status}"),
+            Row(
+              children: [
+                const Icon(Icons.attach_money, size: 16, color: Colors.red),
+                Text("${order.amount}", style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                Icon(_getStatusIcon(order.status), size: 16, color: _getStatusColor(order.status)),
+                const SizedBox(width: 4),
+                Text(order.status, style: TextStyle(fontSize: 13, color: _getStatusColor(order.status), fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 4),
             Text("消费者: ${order.consumer.nickname ?? order.consumer.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
             Text("供给者: ${order.provider.nickname ?? order.provider.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
             Text("开始时间: ${_formatTime(order.startTime ?? order.createdAt)}", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
@@ -105,6 +115,38 @@ class _OrderListScreenState extends State<OrderListScreen> {
       return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
     } catch (e) {
       return iso;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'created':
+      case 'matched':
+        return Colors.green;
+      case 'completed':
+        return Colors.blue;
+      case 'canceled':
+        return Colors.grey;
+      case 'timeout':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'created':
+      case 'matched':
+        return Icons.check_circle_outline;
+      case 'completed':
+        return Icons.task_alt;
+      case 'canceled':
+        return Icons.cancel_outlined;
+      case 'timeout':
+        return Icons.timer_off_outlined;
+      default:
+        return Icons.info_outline;
     }
   }
 }
