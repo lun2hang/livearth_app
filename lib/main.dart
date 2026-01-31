@@ -194,6 +194,19 @@ class MockAPI {
     }
   }
 
+  // 取消发布 (Task/Supply/Order)
+  static Future<bool> cancelEntry(int id, String type) async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.post('/cancel', data: {'id': id, 'type': type});
+      print("API响应 (Cancel): ${response.data}");
+      return true;
+    } catch (e) {
+      print("API调用: 取消失败 -> $e");
+      return false;
+    }
+  }
+
   // 获取当前用户的订单列表
   static Future<List<OrderWithDetails>> fetchUserOrders() async {
     final dio = DioClient().dio;
@@ -425,6 +438,46 @@ class _MainScreenState extends State<MainScreen> {
     ).then((_) => _checkPendingOrders()); // 从个人中心(可能操作订单)返回时刷新提醒
   }
 
+  // 新增：本地更新列表项状态，避免重新加载网络请求
+  void _handleItemChange(int id, String newStatus) {
+    final index = _feedItems.indexWhere((e) => (e is Supply && e.id == id) || (e is Task && e.id == id));
+    if (index != -1) {
+      setState(() {
+        final item = _feedItems[index];
+        if (item is Supply) {
+          _feedItems[index] = Supply(
+            id: item.id,
+            userId: item.userId,
+            title: item.title,
+            description: item.description,
+            lat: item.lat,
+            lng: item.lng,
+            rating: item.rating,
+            price: item.price,
+            status: newStatus,
+            createdAt: item.createdAt,
+            validFrom: item.validFrom,
+            validTo: item.validTo,
+          );
+        } else if (item is Task) {
+          _feedItems[index] = Task(
+            id: item.id,
+            userId: item.userId,
+            title: item.title,
+            description: item.description,
+            lat: item.lat,
+            lng: item.lng,
+            budget: item.budget,
+            status: newStatus,
+            createdAt: item.createdAt,
+            validFrom: item.validFrom,
+            validTo: item.validTo,
+          );
+        }
+      });
+    }
+  }
+
   // --- UI 构建 ---
 
   @override
@@ -561,7 +614,13 @@ class _MainScreenState extends State<MainScreen> {
           if (item is Supply) {
             return GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item))).then((_) => _loadFeedData());
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyDetailScreen(supply: item))).then((result) {
+                  if (result == true) {
+                    _handleItemChange(item.id, 'canceled');
+                  } else {
+                    _loadFeedData();
+                  }
+                });
               },
               child: Container(
                 height: 120, // 稍微增加高度以容纳3行信息
@@ -645,7 +704,13 @@ class _MainScreenState extends State<MainScreen> {
           if (item is Task) {
             return GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item))).then((_) => _loadFeedData());
+                Navigator.push(context, MaterialPageRoute(builder: (_) => TaskDetailScreen(task: item))).then((result) {
+                  if (result == true) {
+                    _handleItemChange(item.id, 'canceled');
+                  } else {
+                    _loadFeedData();
+                  }
+                });
               },
               child: Container(
                 height: 120,

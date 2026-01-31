@@ -1,11 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'models/supply.dart';
 import 'main.dart'; // 导入 MockAPI
 
-class SupplyDetailScreen extends StatelessWidget {
+class SupplyDetailScreen extends StatefulWidget {
   final Supply supply;
 
   const SupplyDetailScreen({super.key, required this.supply});
+
+  @override
+  State<SupplyDetailScreen> createState() => _SupplyDetailScreenState();
+}
+
+class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
+  bool _isOwner = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOwner();
+  }
+
+  Future<void> _checkOwner() async {
+    const storage = FlutterSecureStorage();
+    final currentUserId = await storage.read(key: 'user_id');
+    if (mounted && currentUserId != null) {
+      setState(() {
+        _isOwner = currentUserId == widget.supply.userId;
+      });
+    }
+  }
+
+  Future<void> _handleCancel() async {
+    // 弹窗确认
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+            SizedBox(height: 16),
+            Text('取消后无法恢复，您确定要取消这个供给吗？', textAlign: TextAlign.center),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('再想想'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('确定取消'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    final success = await MockAPI.cancelEntry(widget.supply.id, 'supply');
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('取消成功')));
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('取消失败，请重试')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +117,7 @@ class SupplyDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    supply.title,
+                    widget.supply.title,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -57,7 +126,7 @@ class SupplyDetailScreen extends StatelessWidget {
                       const Icon(Icons.star, color: Colors.orange, size: 18),
                       const SizedBox(width: 4),
                       Text(
-                        "${supply.rating}",
+                        "${widget.supply.rating}",
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
                       ),
                       const SizedBox(width: 16),
@@ -68,18 +137,18 @@ class SupplyDetailScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          "¥${supply.price}",
+                          "¥${widget.supply.price}",
                           style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        supply.status,
+                        widget.supply.status,
                         style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 16),
                       Text(
-                        "ID: ${supply.id}",
+                        "ID: ${widget.supply.id}",
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ],
@@ -103,7 +172,7 @@ class SupplyDetailScreen extends StatelessWidget {
                   const Text("供给描述", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
-                    supply.description.isNotEmpty ? supply.description : "暂无描述",
+                    widget.supply.description.isNotEmpty ? widget.supply.description : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
                 ],
@@ -121,11 +190,11 @@ class SupplyDetailScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(supply.createdAt)),
+                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(widget.supply.createdAt)),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(supply.validFrom)}\n至 ${_formatTime(supply.validTo)}"),
+                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(widget.supply.validFrom)}\n至 ${_formatTime(widget.supply.validTo)}"),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${supply.lat.toStringAsFixed(4)}, ${supply.lng.toStringAsFixed(4)}"),
+                  _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${widget.supply.lat.toStringAsFixed(4)}, ${widget.supply.lng.toStringAsFixed(4)}"),
                 ],
               ),
             ),
@@ -135,28 +204,51 @@ class SupplyDetailScreen extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: () async {
-              final success = await MockAPI.bookSupply(supply.id);
-              if (context.mounted) {
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订成功！')));
-                  Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订失败，请重试')));
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('立即预订', style: TextStyle(fontSize: 16)),
-          ),
+          child: _buildBottomButton(),
         ),
       ),
+    );
+  }
+
+  Widget _buildBottomButton() {
+    if (_isOwner) {
+      if (['created', 'matched'].contains(widget.supply.status)) {
+        return ElevatedButton(
+          onPressed: _isLoading ? null : _handleCancel,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey[300],
+            foregroundColor: Colors.black87,
+            minimumSize: const Size(double.infinity, 48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: _isLoading 
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('取消供给', style: TextStyle(fontSize: 16)),
+        );
+      } else {
+        return const SizedBox.shrink();
+      }
+    }
+
+    return ElevatedButton(
+      onPressed: () async {
+        final success = await MockAPI.bookSupply(widget.supply.id);
+        if (mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订成功！')));
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订失败，请重试')));
+          }
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: const Text('立即预订', style: TextStyle(fontSize: 16)),
     );
   }
 

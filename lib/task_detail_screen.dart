@@ -1,11 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
 
-class TaskDetailScreen extends StatelessWidget {
+class TaskDetailScreen extends StatefulWidget {
   final Task task;
 
   const TaskDetailScreen({super.key, required this.task});
+
+  @override
+  State<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends State<TaskDetailScreen> {
+  bool _isOwner = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOwner();
+  }
+
+  Future<void> _checkOwner() async {
+    const storage = FlutterSecureStorage();
+    final currentUserId = await storage.read(key: 'user_id');
+    if (mounted && currentUserId != null) {
+      setState(() {
+        _isOwner = currentUserId == widget.task.userId;
+      });
+    }
+  }
+
+  Future<void> _handleCancel() async {
+    // 弹窗确认
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+            SizedBox(height: 16),
+            Text('取消后无法恢复，您确定要取消这个需求吗？', textAlign: TextAlign.center),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('再想想'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('确定取消'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    final success = await MockAPI.cancelEntry(widget.task.id, 'task');
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('取消成功')));
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('取消失败，请重试')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +103,7 @@ class TaskDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    task.title,
+                    widget.task.title,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -50,16 +119,16 @@ class TaskDetailScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          "¥${task.budget}",
+                          "¥${widget.task.budget}",
                           style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Text(
-                        task.status,
+                        widget.task.status,
                         style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
                       ),
                       Text(
-                        "ID: ${task.id}",
+                        "ID: ${widget.task.id}",
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ],
@@ -83,7 +152,7 @@ class TaskDetailScreen extends StatelessWidget {
                   const Text("需求描述", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
-                    task.description?.isNotEmpty == true ? task.description! : "暂无描述",
+                    widget.task.description?.isNotEmpty == true ? widget.task.description! : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
                 ],
@@ -101,11 +170,11 @@ class TaskDetailScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(task.createdAt)),
+                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(widget.task.createdAt)),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(task.validFrom)}\n至 ${_formatTime(task.validTo)}"),
+                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(widget.task.validFrom)}\n至 ${_formatTime(widget.task.validTo)}"),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${task.lat.toStringAsFixed(4)}, ${task.lng.toStringAsFixed(4)}"),
+                  _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${widget.task.lat.toStringAsFixed(4)}, ${widget.task.lng.toStringAsFixed(4)}"),
                 ],
               ),
             ),
@@ -115,28 +184,51 @@ class TaskDetailScreen extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: () async {
-              final success = await MockAPI.acceptTask(task.id);
-              if (context.mounted) {
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单成功！')));
-                  Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单失败，请重试')));
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('立即接单', style: TextStyle(fontSize: 16)),
-          ),
+          child: _buildBottomButton(),
         ),
       ),
+    );
+  }
+
+  Widget _buildBottomButton() {
+    if (_isOwner) {
+      if (['created', 'matched'].contains(widget.task.status)) {
+        return ElevatedButton(
+          onPressed: _isLoading ? null : _handleCancel,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey[300],
+            foregroundColor: Colors.black87,
+            minimumSize: const Size(double.infinity, 48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: _isLoading
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('取消需求', style: TextStyle(fontSize: 16)),
+        );
+      } else {
+        return const SizedBox.shrink();
+      }
+    }
+
+    return ElevatedButton(
+      onPressed: () async {
+        final success = await MockAPI.acceptTask(widget.task.id);
+        if (mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单成功！')));
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单失败，请重试')));
+          }
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: const Text('立即接单', style: TextStyle(fontSize: 16)),
     );
   }
 
