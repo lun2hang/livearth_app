@@ -146,11 +146,6 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                         widget.supply.status,
                         style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(width: 16),
-                      Text(
-                        "ID: ${widget.supply.id}",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
                     ],
                   ),
                 ],
@@ -175,6 +170,11 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                     widget.supply.description.isNotEmpty ? widget.supply.description : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "位置: ${widget.supply.lat.toStringAsFixed(4)}, ${widget.supply.lng.toStringAsFixed(4)}",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
                 ],
               ),
             ),
@@ -190,11 +190,11 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
               ),
               child: Column(
                 children: [
+                  _buildInfoRow(Icons.camera_roll_outlined, "ID", "${widget.supply.id}"),
+                  const Divider(height: 24),
                   _buildInfoRow(Icons.access_time, "发布时间", _formatTime(widget.supply.createdAt)),
                   const Divider(height: 24),
                   _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(widget.supply.validFrom)}\n至 ${_formatTime(widget.supply.validTo)}"),
-                  const Divider(height: 24),
-                  _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${widget.supply.lat.toStringAsFixed(4)}, ${widget.supply.lng.toStringAsFixed(4)}"),
                 ],
               ),
             ),

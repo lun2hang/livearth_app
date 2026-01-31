@@ -127,10 +127,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         widget.task.status,
                         style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
                       ),
-                      Text(
-                        "ID: ${widget.task.id}",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
                     ],
                   ),
                 ],
@@ -155,6 +151,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     widget.task.description?.isNotEmpty == true ? widget.task.description! : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "位置: ${widget.task.lat.toStringAsFixed(4)}, ${widget.task.lng.toStringAsFixed(4)}",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
                 ],
               ),
             ),
@@ -170,11 +171,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
               child: Column(
                 children: [
+                  _buildInfoRow(Icons.lightbulb_outline, "ID", "${widget.task.id}"),
+                  const Divider(height: 24),
                   _buildInfoRow(Icons.access_time, "发布时间", _formatTime(widget.task.createdAt)),
                   const Divider(height: 24),
                   _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(widget.task.validFrom)}\n至 ${_formatTime(widget.task.validTo)}"),
-                  const Divider(height: 24),
-                  _buildInfoRow(Icons.location_on_outlined, "地点坐标", "${widget.task.lat.toStringAsFixed(4)}, ${widget.task.lng.toStringAsFixed(4)}"),
                 ],
               ),
             ),
