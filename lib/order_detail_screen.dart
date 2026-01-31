@@ -228,7 +228,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             children: [
               Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey)),
               Text(user.nickname ?? user.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              Text("ID: ${user.id}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
         ),
