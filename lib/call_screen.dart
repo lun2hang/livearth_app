@@ -5,8 +5,9 @@ import 'api/dio_client.dart';
 
 class CallScreen extends StatefulWidget {
   final int orderId;
+  final bool isProvider;
 
-  const CallScreen({super.key, required this.orderId});
+  const CallScreen({super.key, required this.orderId, this.isProvider = false});
 
   @override
   State<CallScreen> createState() => _CallScreenState();
@@ -96,7 +97,15 @@ class _CallScreenState extends State<CallScreen> {
 
     // 5. 开启视频并加入频道
     await _engine.enableVideo();
-    await _engine.startPreview();
+    
+    if (widget.isProvider) {
+      await _engine.startPreview();
+      // 供给者默认使用后置摄像头
+      await _engine.switchCamera();
+    } else {
+      // 消费者：开启麦克风，关闭摄像头
+      await _engine.muteLocalVideoStream(true);
+    }
 
     // 使用 String UID 加入 (因为后端使用的是 String UID 生成 Token)
     // ⚠️ 关键点: 必须使用 joinChannelWithUserAccount 而不是 joinChannel

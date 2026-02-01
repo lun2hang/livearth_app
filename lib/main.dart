@@ -260,6 +260,7 @@ class _MainScreenState extends State<MainScreen> {
   List<dynamic> _feedItems = [];
   bool _isLoading = false;
   OrderWithDetails? _pendingOrder; // 最早的待处理订单
+  String? _currentUserId;
 
   @override
   void initState() {
@@ -267,10 +268,17 @@ class _MainScreenState extends State<MainScreen> {
     // 启动时检查 Token 有效性 (如果过期，会自动清除本地存储)
     DioClient().checkTokenValidity();
     _initLocation(); // 启动时自动获取位置
+    _loadCurrentUser();
     _loadFeedData(); // 初始化加载数据
   }
 
   // --- 逻辑方法 ---
+
+  Future<void> _loadCurrentUser() async {
+    const storage = FlutterSecureStorage();
+    final uid = await storage.read(key: 'user_id');
+    if (mounted) setState(() => _currentUserId = uid);
+  }
 
   // 0. 自动获取位置
   Future<void> _initLocation() async {
@@ -558,7 +566,10 @@ class _MainScreenState extends State<MainScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => CallScreen(orderId: _pendingOrder!.id)),
+                    MaterialPageRoute(builder: (context) => CallScreen(
+                      orderId: _pendingOrder!.id,
+                      isProvider: _pendingOrder!.provider.id == _currentUserId,
+                    )),
                   );
                 },
               ),

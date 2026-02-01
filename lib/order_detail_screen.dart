@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'models/order.dart';
 import 'main.dart'; // 导入 MockAPI
 import 'call_screen.dart';
@@ -14,6 +15,19 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _isLoading = false;
+  String? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    const storage = FlutterSecureStorage();
+    final uid = await storage.read(key: 'user_id');
+    if (mounted) setState(() => _currentUserId = uid);
+  }
 
   Future<void> _handleCancel() async {
     // 弹窗确认
@@ -172,7 +186,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => CallScreen(orderId: widget.order.id),
+                          builder: (context) => CallScreen(
+                            orderId: widget.order.id,
+                            isProvider: widget.order.provider.id == _currentUserId,
+                          ),
                         ),
                       );
                     },
