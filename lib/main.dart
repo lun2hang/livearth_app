@@ -14,6 +14,7 @@ import 'publish_supply_screen.dart'; // 导入供给发布页
 import 'task_detail_screen.dart'; // 导入需求详情页
 import 'supply_detail_screen.dart'; // 导入供给详情页
 import 'order_list_screen.dart'; // 导入订单列表页
+import 'call_screen.dart'; // 导入通话页面
 
 void main() {
   runApp(const MyApp());
@@ -549,14 +550,28 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const OrderListScreen()),
-              ).then((_) => _checkPendingOrders()); // 从订单列表返回时刷新
-            },
-            child: const Text("查看", style: TextStyle(fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.call, color: Colors.green),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CallScreen(orderId: _pendingOrder!.id)),
+                  );
+                },
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const OrderListScreen()),
+                  ).then((_) => _checkPendingOrders()); // 从订单列表返回时刷新
+                },
+                child: const Text("查看", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         ],
       ),

@@ -75,4 +75,15 @@ class DioClient {
       // 忽略错误，如果是 401，拦截器已经处理了清除逻辑
     }
   }
+
+  /// 获取 Agora 通话 Token
+  Future<Map<String, dynamic>?> getAgoraToken(int orderId) async {
+    try {
+      final response = await dio.get('/agora/token', queryParameters: {'order_id': orderId});
+      return response.data;
+    } catch (e) {
+      print("❌ [Dio] 获取 Agora Token 失败: $e");
+      return null;
+    }
+  }
 }

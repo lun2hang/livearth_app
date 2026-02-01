@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/order.dart';
 import 'main.dart'; // 导入 MockAPI
+import 'call_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final OrderWithDetails order;
@@ -159,7 +160,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: widget.order.status == 'created'
+      floatingActionButton: ['created', 'live_start'].contains(widget.order.status)
           ? Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -167,7 +168,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 SizedBox(
                   width: MediaQuery.of(context).size.width / 3,
                   child: ElevatedButton(
-                    onPressed: null, // 暂时不可点击
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CallScreen(orderId: widget.order.id),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade50,
                       foregroundColor: Colors.green,
