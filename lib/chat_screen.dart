@@ -83,6 +83,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
       // 2. 初始化 Client
       _client = await AgoraRtmClient.createInstance(appId);
+      // 设置 RTM 日志等级 (0: OFF, 15: INFO, 14: WARN, 12: ERROR)
+      // 建议开发环境用 15，生产环境用 14 或 12 以减少日志噪音
+      await _client?.setParameters('{"rtm.log_filter": 15}');
       
       // 3. 登录 RTM 系统
       debugPrint("=== RTM Login Debug ===");
