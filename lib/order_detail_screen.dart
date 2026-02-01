@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'models/order.dart';
 import 'main.dart'; // 导入 MockAPI
 import 'call_screen.dart';
+import 'chat_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final OrderWithDetails order;
@@ -261,7 +262,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline, color: Colors.blue),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('发送消息功能开发中')));
+              if (_currentUserId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      orderId: widget.order.id,
+                      currentUserId: _currentUserId!,
+                      otherUserName: user.nickname ?? user.username,
+                    ),
+                  ),
+                );
+              }
             },
           ),
       ],
