@@ -239,6 +239,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Widget _buildUserRow(String role, UserInfo user) {
+    final isOther = _currentUserId != null && user.id != _currentUserId;
     return Row(
       children: [
         CircleAvatar(
@@ -256,6 +257,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
         ),
+        if (isOther)
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.blue),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('发送消息功能开发中')));
+            },
+          ),
       ],
     );
   }
