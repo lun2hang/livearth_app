@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:agora_rtm/agora_rtm.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
 
 /// 全局 RTM 管理器 (单例)
@@ -15,12 +16,19 @@ class RtmManager {
   Function(AgoraRtmMessage, String)? onMessageReceived;
   // 消息缓存: peerId -> List<MessageJson> (包含 _isMe 字段)
   final Map<String, List<Map<String, dynamic>>> _messageCache = {};
+  
+  // 本地存储
+  final _storage = const FlutterSecureStorage();
+  String? _currentUid;
 
   bool get isLogin => _client != null;
 
   /// 初始化并登录 RTM
   Future<void> init(String appId, String token, String uid) async {
     if (_client != null) return; // 已连接则跳过
+
+    _currentUid = uid;
+    await _loadCache(); // 优先加载本地缓存
 
     debugPrint("🔄 [RTM] 开始全局初始化: UID=$uid");
     try {
@@ -29,7 +37,7 @@ class RtmManager {
       await _client?.setParameters('{"rtm.log_filter": 15}');
       
       // 设置全局消息监听
-      _client?.onMessageReceived = (AgoraRtmMessage message, String peerId) {
+      _client?.onMessageReceived = (AgoraRtmMessage message, String peerId) async {
         debugPrint("📩 [RTM] 收到消息 from $peerId: ${message.text}");
         
         // 1. 存入缓存
@@ -40,6 +48,7 @@ class RtmManager {
             _messageCache[peerId] = [];
           }
           _messageCache[peerId]!.add(map);
+          await _saveCache(); // 持久化保存
         } catch (e) {
           debugPrint("❌ [RTM] 缓存接收消息失败: $e");
         }
@@ -70,6 +79,7 @@ class RtmManager {
         _messageCache[peerId] = [];
       }
       _messageCache[peerId]!.add(map);
+      await _saveCache(); // 持久化保存
     } catch (e) {
       debugPrint("❌ [RTM] 缓存发送消息失败: $e");
     }
@@ -85,6 +95,35 @@ class RtmManager {
     final list = _messageCache[peerId] ?? [];
     // 根据 orderId 过滤，防止串单
     return list.where((m) => m['order_id'].toString() == orderId.toString()).toList();
+  }
+
+  /// 从本地存储加载缓存
+  Future<void> _loadCache() async {
+    if (_currentUid == null) return;
+    try {
+      final jsonStr = await _storage.read(key: 'rtm_cache_$_currentUid');
+      if (jsonStr != null) {
+        final Map<String, dynamic> decoded = jsonDecode(jsonStr);
+        _messageCache.clear();
+        decoded.forEach((key, value) {
+          _messageCache[key] = List<Map<String, dynamic>>.from(
+            (value as List).map((item) => Map<String, dynamic>.from(item))
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ [RTM] 加载本地缓存失败: $e");
+    }
+  }
+
+  /// 保存缓存到本地
+  Future<void> _saveCache() async {
+    if (_currentUid == null) return;
+    try {
+      await _storage.write(key: 'rtm_cache_$_currentUid', value: jsonEncode(_messageCache));
+    } catch (e) {
+      debugPrint("❌ [RTM] 保存本地缓存失败: $e");
+    }
   }
 
   /// 登出 (通常在切换账号时调用)
@@ -150,7 +189,22 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      // 2. 加载本地缓存的历史消息 (关键修改)
+      // 2. 尝试全局登录 (如果尚未登录)
+      if (!RtmManager().isLogin) {
+        // 如果未登录，需要单独获取 RTM Token
+        final rtmData = await DioClient().getRtmToken();
+        if (rtmData != null) {
+          final String appId = (rtmData['app_id'] ?? "").toString().trim();
+          final String rtmToken = (rtmData['token'] ?? rtmData['rtm_token'] ?? "").toString().trim();
+          final String uid = (rtmData['uid'] ?? "").toString().trim().replaceAll('-', '');
+          
+          if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
+            await RtmManager().init(appId, rtmToken, uid);
+          }
+        }
+      }
+
+      // 3. 加载本地缓存的历史消息 (确保在 init 之后，因为 init 会加载缓存)
       final history = RtmManager().getMessages(_peerUid!, widget.orderId.toString());
       if (history.isNotEmpty) {
         setState(() {
@@ -170,21 +224,6 @@ class _ChatScreenState extends State<ChatScreen> {
             _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
           }
         });
-      }
-
-      // 3. 尝试全局登录 (如果尚未登录)
-      if (!RtmManager().isLogin) {
-        // 如果未登录，需要单独获取 RTM Token
-        final rtmData = await DioClient().getRtmToken();
-        if (rtmData != null) {
-          final String appId = (rtmData['app_id'] ?? "").toString().trim();
-          final String rtmToken = (rtmData['token'] ?? rtmData['rtm_token'] ?? "").toString().trim();
-          final String uid = (rtmData['uid'] ?? "").toString().trim().replaceAll('-', '');
-          
-          if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
-            await RtmManager().init(appId, rtmToken, uid);
-          }
-        }
       }
 
       // 4. 注册当前页面的消息监听
