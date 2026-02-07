@@ -39,7 +39,7 @@ class RtmManager {
     try {
       // RTM 2.x 初始化
       // 1. 使用 RTM() 顶层函数创建实例，appId 和 userId 作为位置参数传递
-      final (status, client) = await RTM(appId, uid, config: const RtmConfig());
+      final (status, client) = await RTM(appId, uid, config: const RtmConfig(areaCode: {RtmAreaCode.na}));
 
       if (status.error == true) {
         throw Exception("RTM Create failed: ${status.reason}");
@@ -126,13 +126,16 @@ class RtmManager {
       );
 
       if (status.error == false && response != null) {
-        debugPrint("📥 [RTM] 拉取到 ${response.messageList.length} 条离线消息");
+        debugPrint("✅ [RTM] 拉取离线消息成功: 共 ${response.messageList.length} 条");
         // 历史消息默认可能是倒序 (最新的在前)，反转后按时间顺序插入
         for (var msg in response.messageList.reversed) {
           final text = msg.message != null ? utf8.decode(msg.message!) : "";
           final peerId = msg.publisher ?? "";
+          debugPrint("   📄 [RTM] 消息详情: 来自=$peerId, 内容=$text");
           await _handleIncomingMessage(text, peerId, isOfflineMessage: true);
         }
+      } else {
+        debugPrint("❌ [RTM] 拉取离线消息失败: Code=${status.errorCode}, Reason=${status.reason}");
       }
     } catch (e) {
       debugPrint("❌ [RTM] 拉取离线消息异常: $e");
