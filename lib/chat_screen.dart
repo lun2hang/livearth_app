@@ -1,7 +1,103 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:agora_rtm/agora_rtm.dart';
 import 'api/dio_client.dart';
+
+/// 全局 RTM 管理器 (单例)
+class RtmManager {
+  static final RtmManager _instance = RtmManager._internal();
+  factory RtmManager() => _instance;
+  RtmManager._internal();
+
+  AgoraRtmClient? _client;
+  // UI 消息回调: (AgoraRtmMessage message, String peerId)
+  Function(AgoraRtmMessage, String)? onMessageReceived;
+  // 消息缓存: peerId -> List<MessageJson> (包含 _isMe 字段)
+  final Map<String, List<Map<String, dynamic>>> _messageCache = {};
+
+  bool get isLogin => _client != null;
+
+  /// 初始化并登录 RTM
+  Future<void> init(String appId, String token, String uid) async {
+    if (_client != null) return; // 已连接则跳过
+
+    debugPrint("🔄 [RTM] 开始全局初始化: UID=$uid");
+    try {
+      _client = await AgoraRtmClient.createInstance(appId);
+      // 设置日志等级
+      await _client?.setParameters('{"rtm.log_filter": 15}');
+      
+      // 设置全局消息监听
+      _client?.onMessageReceived = (AgoraRtmMessage message, String peerId) {
+        debugPrint("📩 [RTM] 收到消息 from $peerId: ${message.text}");
+        
+        // 1. 存入缓存
+        try {
+          final Map<String, dynamic> map = jsonDecode(message.text);
+          map['_isMe'] = false; // 标记为接收
+          if (!_messageCache.containsKey(peerId)) {
+            _messageCache[peerId] = [];
+          }
+          _messageCache[peerId]!.add(map);
+        } catch (e) {
+          debugPrint("❌ [RTM] 缓存接收消息失败: $e");
+        }
+
+        // 转发给当前的 UI 监听器 (如果有)
+        if (onMessageReceived != null) {
+          onMessageReceived!(message, peerId);
+        }
+      };
+
+      await _client?.login(token, uid);
+      debugPrint("✅ [RTM] 全局登录成功");
+    } catch (e) {
+      debugPrint("❌ [RTM] 全局登录失败: $e");
+      _client = null;
+    }
+  }
+
+  /// 发送 P2P 消息
+  Future<void> sendMessageToPeer(String peerId, String text) async {
+    if (_client == null) throw Exception("RTM 服务未连接");
+    
+    // 1. 存入缓存
+    try {
+      final Map<String, dynamic> map = jsonDecode(text);
+      map['_isMe'] = true; // 标记为发送
+      if (!_messageCache.containsKey(peerId)) {
+        _messageCache[peerId] = [];
+      }
+      _messageCache[peerId]!.add(map);
+    } catch (e) {
+      debugPrint("❌ [RTM] 缓存发送消息失败: $e");
+    }
+
+    final message = AgoraRtmMessage.fromText(text);
+    // 参数3: enableOfflineMessaging = true (开启离线消息)
+    // 参数4: enableHistoricalMessaging = false
+    await _client!.sendMessageToPeer(peerId, message, true, false);
+  }
+
+  /// 获取缓存的消息
+  List<Map<String, dynamic>> getMessages(String peerId, String orderId) {
+    final list = _messageCache[peerId] ?? [];
+    // 根据 orderId 过滤，防止串单
+    return list.where((m) => m['order_id'].toString() == orderId.toString()).toList();
+  }
+
+  /// 登出 (通常在切换账号时调用)
+  Future<void> logout() async {
+    try {
+      await _client?.logout();
+      await _client?.release();
+      _client = null;
+    } catch (e) {
+      debugPrint("❌ [RTM] 登出失败: $e");
+    }
+  }
+}
 
 class ChatScreen extends StatefulWidget {
   final int orderId;
@@ -20,13 +116,10 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  AgoraRtmClient? _client;
-  AgoraRtmChannel? _channel;
+  String? _peerUid; // 对方的 RTM UID
   final List<_Message> _messages = [];
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isLogin = false;
-  bool _isJoined = false;
 
   @override
   void initState() {
@@ -36,27 +129,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    _dispose();
+    // 移除监听，但不要断开连接！
+    RtmManager().onMessageReceived = null;
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _dispose() async {
-    if (_isJoined && _channel != null) {
-      await _channel!.leave();
-    }
-    if (_isLogin && _client != null) {
-      await _client!.logout();
-    }
-    await _channel?.release();
-    await _client?.release();
-  }
-
   Future<void> _initAgoraRtm() async {
     try {
-      // 1. 获取 Token (包含 RTM Token)
-      final data = await DioClient().getAgoraToken(widget.orderId);
+      // 1. 获取 RTC 信息以得到 peer_uid (对方ID)
+      final data = await DioClient().getRtcToken(widget.orderId);
       if (data == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("无法获取聊天凭证")));
@@ -67,52 +150,72 @@ class _ChatScreenState extends State<ChatScreen> {
 
       // 使用 ?? "" 防止 null 变成 "null" 字符串
       final String appId = (data['app_id'] ?? "").toString().trim();
-      final String rtmToken = (data['rtm_token'] ?? "").toString().trim();
-      final String channelName = (data['channel_name'] ?? "").toString().trim();
-      // ⚠️ 针对 RTM 登录去除 UID 中的减号 (需确保后端生成 Token 时也同步去除了减号)
-      final String uid = (data['uid'] ?? "").toString().trim().replaceAll('-', '');
-      final String rtcToken = (data['token'] ?? "").toString().trim();
+      final String peerUid = (data['peer_uid'] ?? "").toString().trim();
 
-      if (appId.isEmpty || rtmToken.isEmpty || uid.isEmpty) {
-        debugPrint("❌ RTM 参数错误: AppID=$appId, TokenLen=${rtmToken.length}, UID=$uid");
+      if (appId.isEmpty || peerUid.isEmpty) {
+        debugPrint("❌ RTM 参数错误: AppID=$appId, PeerUID=$peerUid");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("聊天参数不完整")));
         }
         return;
       }
-
-      // 2. 初始化 Client
-      _client = await AgoraRtmClient.createInstance(appId);
-      // 设置 RTM 日志等级 (0: OFF, 15: INFO, 14: WARN, 12: ERROR)
-      // 建议开发环境用 15，生产环境用 14 或 12 以减少日志噪音
-      await _client?.setParameters('{"rtm.log_filter": 15}');
       
-      // 3. 登录 RTM 系统
-      debugPrint("=== RTM Login Debug ===");
-      debugPrint("AppID: '$appId'");
-      debugPrint("UID: '$uid'");
-      debugPrint("RTM Token: '$rtmToken'");
-      if (rtmToken.isNotEmpty && rtmToken == rtcToken) {
-        debugPrint("⚠️ 警告: RTM Token 与 RTC Token 完全一致，这通常是错误的！");
+      _peerUid = peerUid;
+
+      // 2. 加载本地缓存的历史消息 (关键修改)
+      final history = RtmManager().getMessages(_peerUid!, widget.orderId.toString());
+      if (history.isNotEmpty) {
+        setState(() {
+          _messages.clear();
+          for (var map in history) {
+            final int ts = (map['timestamp'] as num?)?.toInt() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+            _messages.add(_Message(
+              text: map['content'] ?? '',
+              isMe: map['_isMe'] == true,
+              timestamp: ts,
+            ));
+          }
+        });
+        // 滚动到底部
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
       }
-      await _client?.login(rtmToken, uid);
-      setState(() => _isLogin = true);
 
-      // 4. 创建并加入频道 (与 RTC 频道同名)
-      _channel = await _client?.createChannel(channelName);
-      
-      // 监听频道消息
-      _channel?.onMessageReceived = (AgoraRtmMessage message, AgoraRtmMember member) {
-        // 过滤掉自己发的消息 (虽然 RTM 默认不推给自己，但为了保险)
-        if (member.userId != uid) {
-          _addMessage(message.text, false);
+      // 3. 尝试全局登录 (如果尚未登录)
+      if (!RtmManager().isLogin) {
+        // 如果未登录，需要单独获取 RTM Token
+        final rtmData = await DioClient().getRtmToken();
+        if (rtmData != null) {
+          final String rtmToken = (rtmData['token'] ?? rtmData['rtm_token'] ?? "").toString().trim();
+          final String uid = (rtmData['uid'] ?? "").toString().trim().replaceAll('-', '');
+          
+          if (rtmToken.isNotEmpty && uid.isNotEmpty) {
+            await RtmManager().init(appId, rtmToken, uid);
+          }
+        }
+      }
+
+      // 4. 注册当前页面的消息监听
+      RtmManager().onMessageReceived = (AgoraRtmMessage message, String peerId) {
+        // 过滤：只处理当前聊天对象的消息
+        if (peerId == _peerUid) {
+          if (mounted) {
+            try {
+              final Map<String, dynamic> map = jsonDecode(message.text);
+              // 校验 order_id
+              if (map['order_id'].toString() == widget.orderId.toString()) {
+                final int ts = (map['timestamp'] as num?)?.toInt() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+                _addMessage(map['content'] ?? '', false, ts);
+              }
+            } catch (e) {
+              _addMessage(message.text, false, DateTime.now().millisecondsSinceEpoch ~/ 1000);
+            }
+          }
         }
       };
-      
-      await _channel?.join();
-      setState(() => _isJoined = true);
-      
-      debugPrint("✅ RTM 加入成功: $channelName");
 
     } on MissingPluginException {
       debugPrint("❌ RTM 插件未加载: 请停止应用并重新编译运行 (Hot Restart 无法加载新插件)");
@@ -132,9 +235,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _addMessage(String text, bool isMe) {
+  void _addMessage(String text, bool isMe, int timestamp) {
     setState(() {
-      _messages.add(_Message(text: text, isMe: isMe));
+      _messages.add(_Message(text: text, isMe: isMe, timestamp: timestamp));
     });
     // 滚动到底部
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -152,16 +255,31 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    if (!_isLogin || !_isJoined || _channel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("未连接到聊天室")));
+    if (!RtmManager().isLogin || _peerUid == null || _peerUid!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("聊天服务未连接")));
       return;
     }
 
     try {
-      final message = AgoraRtmMessage.fromText(text);
-      await _channel!.sendMessage(message);
-      _addMessage(text, true);
+      final int ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      // 构造 JSON 消息
+      final Map<String, dynamic> jsonMsg = {
+        "order_id": widget.orderId,
+        "content": text,
+        "type": "text",
+        "timestamp": ts,
+      };
+      
+      await RtmManager().sendMessageToPeer(_peerUid!, jsonEncode(jsonMsg));
+      _addMessage(text, true, ts);
       _controller.clear();
+    } on AgoraRtmClientException catch (e) {
+      String msg = "发送失败: ${e.code}";
+      if (e.code == 3) {
+        msg = "对方不在线 (请在Agora控制台开启历史/离线消息)";
+      }
+      debugPrint("❌ RTM Send Error: Code=${e.code}, Reason=${e.reason}");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("发送失败: $e")));
     }
@@ -186,20 +304,35 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final msg = _messages[index];
+                final dt = DateTime.fromMillisecondsSinceEpoch(msg.timestamp * 1000);
+                final timeStr = "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+
                 return Align(
                   alignment: msg.isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: msg.isMe ? Colors.blue : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-                    child: Text(
-                      msg.text,
-                      style: TextStyle(color: msg.isMe ? Colors.white : Colors.black87),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: msg.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: msg.isMe ? Colors.blue : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                        child: Text(
+                          msg.text,
+                          style: TextStyle(color: msg.isMe ? Colors.white : Colors.black87),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          timeStr,
+                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -240,5 +373,6 @@ class _ChatScreenState extends State<ChatScreen> {
 class _Message {
   final String text;
   final bool isMe;
-  _Message({required this.text, required this.isMe});
+  final int timestamp;
+  _Message({required this.text, required this.isMe, required this.timestamp});
 }

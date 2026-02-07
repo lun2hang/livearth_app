@@ -31,7 +31,7 @@ class _CallScreenState extends State<CallScreen> {
     await [Permission.microphone, Permission.camera].request();
 
     // 2. 获取 Token
-    final data = await DioClient().getAgoraToken(widget.orderId);
+    final data = await DioClient().getRtcToken(widget.orderId);
     if (data == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("无法获取通话凭证")));

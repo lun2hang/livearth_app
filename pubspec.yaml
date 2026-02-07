@@ -44,6 +44,7 @@ dependencies:
   geocoding: ^4.0.0
   sign_in_with_apple: ^7.0.1
   agora_rtc_engine: ^6.3.0
+  # 1.5.8
   agora_rtm: ^1.5.8
   permission_handler: ^11.0.0
 

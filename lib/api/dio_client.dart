@@ -76,13 +76,24 @@ class DioClient {
     }
   }
 
-  /// 获取 Agora 通话 Token
-  Future<Map<String, dynamic>?> getAgoraToken(int orderId) async {
+  /// 获取 Agora RTC Token (用于音视频通话)
+  Future<Map<String, dynamic>?> getRtcToken(int orderId) async {
     try {
-      final response = await dio.get('/agora/token', queryParameters: {'order_id': orderId});
+      final response = await dio.get('/agora/rtc-token', queryParameters: {'order_id': orderId});
       return response.data;
     } catch (e) {
-      print("❌ [Dio] 获取 Agora Token 失败: $e");
+      print("❌ [Dio] 获取 Agora RTC Token 失败: $e");
+      return null;
+    }
+  }
+
+  /// 获取 Agora RTM Token (用于全局消息)
+  Future<Map<String, dynamic>?> getRtmToken() async {
+    try {
+      final response = await dio.get('/agora/rtm-token');
+      return response.data;
+    } catch (e) {
+      print("❌ [Dio] 获取 Agora RTM Token 失败: $e");
       return null;
     }
   }

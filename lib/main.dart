@@ -15,6 +15,7 @@ import 'task_detail_screen.dart'; // 导入需求详情页
 import 'supply_detail_screen.dart'; // 导入供给详情页
 import 'order_list_screen.dart'; // 导入订单列表页
 import 'call_screen.dart'; // 导入通话页面
+import 'chat_screen.dart'; // 导入 ChatScreen 以使用 RtmManager
 
 void main() {
   runApp(const MyApp());
@@ -270,6 +271,7 @@ class _MainScreenState extends State<MainScreen> {
     _initLocation(); // 启动时自动获取位置
     _loadCurrentUser();
     _loadFeedData(); // 初始化加载数据
+    _initGlobalRTM(); // 尝试启动全局 RTM
   }
 
   // --- 逻辑方法 ---
@@ -278,6 +280,26 @@ class _MainScreenState extends State<MainScreen> {
     const storage = FlutterSecureStorage();
     final uid = await storage.read(key: 'user_id');
     if (mounted) setState(() => _currentUserId = uid);
+  }
+
+  // 初始化全局 RTM 连接
+  Future<void> _initGlobalRTM() async {
+    try {
+      // 获取全局 RTM Token (无需 orderId)
+      final data = await DioClient().getRtmToken();
+      if (data != null) {
+        final String appId = (data['app_id'] ?? "").toString().trim();
+        // 兼容后端可能返回 'token' 或 'rtm_token'
+        final String rtmToken = (data['token'] ?? data['rtm_token'] ?? "").toString().trim();
+        final String uid = (data['uid'] ?? "").toString().trim().replaceAll('-', '');
+        
+        if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
+          await RtmManager().init(appId, rtmToken, uid);
+        }
+      }
+    } catch (e) {
+      print("全局 RTM 初始化跳过 (可能未登录): $e");
+    }
   }
 
   // 0. 自动获取位置
@@ -444,7 +466,11 @@ class _MainScreenState extends State<MainScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ProfileScreen()),
-    ).then((_) => _checkPendingOrders()); // 从个人中心(可能操作订单)返回时刷新提醒
+    ).then((_) {
+      _checkPendingOrders(); // 刷新订单提醒
+      _loadCurrentUser();    // 刷新用户ID
+      _initGlobalRTM();      // 尝试登录 RTM (如果刚才在个人中心登录了)
+    });
   }
 
   // 新增：本地更新列表项状态，避免重新加载网络请求
