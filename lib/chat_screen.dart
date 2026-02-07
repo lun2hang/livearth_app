@@ -11,9 +11,9 @@ class RtmManager {
   factory RtmManager() => _instance;
   RtmManager._internal();
 
-  AgoraRtmClient? _client;
-  // UI 消息回调: (AgoraRtmMessage message, String peerId)
-  Function(AgoraRtmMessage, String)? onMessageReceived;
+  RtmClient? _client;
+  // UI 消息回调: (String message, String peerId)
+  Function(String, String)? onMessageReceived;
   // 消息缓存: peerId -> List<MessageJson> (包含 _isMe 字段)
   final Map<String, List<Map<String, dynamic>>> _messageCache = {};
   
@@ -37,48 +37,105 @@ class RtmManager {
 
     debugPrint("🔄 [RTM] 开始全局初始化: UID=$uid");
     try {
-      _client = await AgoraRtmClient.createInstance(appId);
-      // 设置日志等级
-      await _client?.setParameters('{"rtm.log_filter": 15}');
+      // RTM 2.x 初始化
+      // 1. 使用 RTM() 顶层函数创建实例，appId 和 userId 作为位置参数传递
+      final (status, client) = await RTM(appId, uid, config: const RtmConfig());
+
+      if (status.error == true) {
+        throw Exception("RTM Create failed: ${status.reason}");
+      }
+      _client = client;
+
+      // 2. 设置事件监听 (替代 RtmEventHandler)
+      _client!.addListener(message: (MessageEvent event) {
+        // 消息内容是 Uint8List，需要解码
+        final text = event.message != null ? utf8.decode(event.message!) : "";
+        final peerId = event.publisher ?? "";
+        _handleIncomingMessage(text, peerId);
+      });
+
+      // 3. 登录 (解构返回值)
+      final (loginStatus, _) = await _client!.login(token);
+      if (loginStatus.error == true) {
+        throw Exception("RTM Login failed: ${loginStatus.reason}");
+      }
       
-      // 设置全局消息监听
-      _client?.onMessageReceived = (AgoraRtmMessage message, String peerId) async {
-        debugPrint("📩 [RTM] 收到消息 from $peerId: ${message.text}");
-        
-        // 1. 存入缓存
-        try {
-          final Map<String, dynamic> map = jsonDecode(message.text);
-          map['_isMe'] = false; // 标记为接收
-          if (!_messageCache.containsKey(peerId)) {
-            _messageCache[peerId] = [];
-          }
-          _messageCache[peerId]!.add(map);
-          await _saveCache(); // 持久化保存
-
-          // 2. 更新未读计数
-          final String orderId = map['order_id'].toString();
-          // 如果当前不在该订单的聊天窗口，则增加未读计数
-          if (_activeOrderId != orderId) {
-            final current = Map<String, int>.from(unreadCountsNotifier.value);
-            current[orderId] = (current[orderId] ?? 0) + 1;
-            unreadCountsNotifier.value = current;
-            await _saveUnreadCache();
-          }
-        } catch (e) {
-          debugPrint("❌ [RTM] 缓存接收消息失败: $e");
-        }
-
-        // 转发给当前的 UI 监听器 (如果有)
-        if (onMessageReceived != null) {
-          onMessageReceived!(message, peerId);
-        }
-      };
-
-      await _client?.login(token, uid);
       debugPrint("✅ [RTM] 全局登录成功");
+      // 登录成功后，拉取发给自己的离线消息
+      _pullOfflineMessages(uid);
     } catch (e) {
       debugPrint("❌ [RTM] 全局登录失败: $e");
       _client = null;
+    }
+  }
+
+  Future<void> _handleIncomingMessage(String text, String peerId, {bool isOfflineMessage = false}) async {
+    debugPrint("📩 [RTM] 收到消息 from $peerId: $text");
+    
+    // 1. 存入缓存
+    try {
+      final Map<String, dynamic> map = jsonDecode(text);
+      map['_isMe'] = false; // 标记为接收
+
+      // 简单去重: 检查是否已存在相同 timestamp 和 content 的消息
+      if (_messageCache.containsKey(peerId)) {
+        final exists = _messageCache[peerId]!.any((m) =>
+            m['timestamp'] == map['timestamp'] && m['content'] == map['content']);
+        if (exists) {
+          debugPrint("⚠️ [RTM] 忽略重复消息: ${map['content']}");
+          return;
+        }
+      }
+
+      if (!_messageCache.containsKey(peerId)) {
+        _messageCache[peerId] = [];
+      }
+      _messageCache[peerId]!.add(map);
+      await _saveCache(); // 持久化保存
+
+      // 2. 更新未读计数
+      final String orderId = map['order_id'].toString();
+      // 如果当前不在该订单的聊天窗口，则增加未读计数
+      if (_activeOrderId != orderId) {
+        final current = Map<String, int>.from(unreadCountsNotifier.value);
+        current[orderId] = (current[orderId] ?? 0) + 1;
+        unreadCountsNotifier.value = current;
+        await _saveUnreadCache();
+      }
+    } catch (e) {
+      debugPrint("❌ [RTM] 缓存接收消息失败: $e");
+    }
+
+    // 转发给当前的 UI 监听器 (如果有)
+    if (onMessageReceived != null) {
+      onMessageReceived!(text, peerId);
+    }
+  }
+
+  /// 拉取离线消息 (User Channel)
+  /// RTM 2.x 不会自动推送离线消息，需要主动拉取 "发给我的" 消息
+  Future<void> _pullOfflineMessages(String uid) async {
+    if (_client == null) return;
+    try {
+      debugPrint("📥 [RTM] 开始拉取离线消息 (User Channel)...");
+      // 4. getHistory() 返回模块对象，需调用其 getMessages 方法
+      final (status, response) = await _client!.getHistory().getMessages(
+        uid, // Channel Name = 自己的 UID (User Channel)
+        RtmChannelType.user,
+        messageCount: 20,
+      );
+
+      if (status.error == false && response != null) {
+        debugPrint("📥 [RTM] 拉取到 ${response.messageList.length} 条离线消息");
+        // 历史消息默认可能是倒序 (最新的在前)，反转后按时间顺序插入
+        for (var msg in response.messageList.reversed) {
+          final text = msg.message != null ? utf8.decode(msg.message!) : "";
+          final peerId = msg.publisher ?? "";
+          await _handleIncomingMessage(text, peerId, isOfflineMessage: true);
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ [RTM] 拉取离线消息异常: $e");
     }
   }
 
@@ -86,10 +143,18 @@ class RtmManager {
   Future<void> sendMessageToPeer(String peerId, String text) async {
     if (_client == null) throw Exception("RTM 服务未连接");
     
-    final message = AgoraRtmMessage.fromText(text);
-    // 参数3: enableOfflineMessaging = true (开启离线消息)
-    // 参数4: enableHistoricalMessaging = true (建议同时开启历史消息，以确保离线缓存生效)
-    await _client!.sendMessageToPeer(peerId, message, true, true);
+    // RTM 2.x 发送消息 (User Channel)
+    final (status, _) = await _client!.publish(
+      peerId, // channelName = target userId
+      text,
+      channelType: RtmChannelType.user,
+      customType: 'PlainText',
+      storeInHistory: false, // 5. 直接使用命名参数，移除 PublishOptions
+    );
+
+    if (status.error == true) {
+      throw Exception("发送失败: ${status.errorCode}, ${status.reason}");
+    }
 
     // 1. 发送成功后，存入缓存
     try {
@@ -148,8 +213,11 @@ class RtmManager {
   }
 
   /// 离开聊天窗口
-  void leaveChat() {
-    _activeOrderId = null;
+  /// 增加 orderId 参数，防止从 聊天B 返回 聊天A 时，聊天B 的销毁误清除了 聊天A 的状态
+  void leaveChat(String orderId) {
+    if (_activeOrderId == orderId) {
+      _activeOrderId = null;
+    }
   }
 
   Future<void> _clearUnread(String orderId) async {
@@ -231,7 +299,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    RtmManager().leaveChat(); // 标记离开
+    RtmManager().leaveChat(widget.orderId.toString()); // 标记离开当前特定订单
     // 移除监听，但不要断开连接！
     RtmManager().onMessageReceived = null;
     _controller.dispose();
@@ -289,19 +357,19 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       // 4. 注册当前页面的消息监听
-      RtmManager().onMessageReceived = (AgoraRtmMessage message, String peerId) {
+      RtmManager().onMessageReceived = (String messageText, String peerId) {
         // 过滤：只处理当前聊天对象的消息
         if (peerId == _peerUid) {
           if (mounted) {
             try {
-              final Map<String, dynamic> map = jsonDecode(message.text);
+              final Map<String, dynamic> map = jsonDecode(messageText);
               // 校验 order_id
               if (map['order_id'].toString() == widget.orderId.toString()) {
                 final int ts = (map['timestamp'] as num?)?.toInt() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000);
                 _addMessage(map['content'] ?? '', false, ts);
               }
             } catch (e) {
-              _addMessage(message.text, false, DateTime.now().millisecondsSinceEpoch ~/ 1000);
+              _addMessage(messageText, false, DateTime.now().millisecondsSinceEpoch ~/ 1000);
             }
           }
         }
@@ -311,11 +379,6 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint("❌ RTM 插件未加载: 请停止应用并重新编译运行 (Hot Restart 无法加载新插件)");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("请完全重启应用以加载新插件")));
-      }
-    } on AgoraRtmClientException catch (e) {
-      debugPrint("❌ RTM Client 异常: Code=${e.code}, Reason=${e.reason}");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("聊天登录失败: ${e.code}")));
       }
     } catch (e) {
       debugPrint("❌ RTM 初始化失败: $e");
@@ -363,13 +426,6 @@ class _ChatScreenState extends State<ChatScreen> {
       await RtmManager().sendMessageToPeer(_peerUid!, jsonEncode(jsonMsg));
       _addMessage(text, true, ts);
       _controller.clear();
-    } on AgoraRtmClientException catch (e) {
-      String msg = "发送失败: ${e.code}";
-      if (e.code == 3) {
-        msg = "对方不在线 (请在Agora控制台开启历史/离线消息)";
-      }
-      debugPrint("❌ RTM Send Error: Code=${e.code}, Reason=${e.reason}");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("发送失败: $e")));
     }

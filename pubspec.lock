@@ -5,18 +5,18 @@ packages:
     dependency: "direct main"
     description:
       name: agora_rtc_engine
-      sha256: "6559294d18ce4445420e19dbdba10fb58cac955cd8f22dbceae26716e194d70e"
+      sha256: "1ff249665a6a86fe0db13c7026853a92a715abeb819d8ad68bf5927f890e2c45"
       url: "https://pub.dev"
     source: hosted
-    version: "6.5.3"
+    version: "6.2.6"
   agora_rtm:
     dependency: "direct main"
     description:
       name: agora_rtm
-      sha256: "8272667fb3a385919e5e9845a156aedf40e24850fd28241cb60a5997f1a24494"
+      sha256: "3cd8e25ecfccbb2e8ca5a70b173bff080dab782e233f9b40f483adbd31dd38fb"
       url: "https://pub.dev"
     source: hosted
-    version: "1.6.3"
+    version: "2.2.5"
   ansicolor:
     dependency: transitive
     description:
@@ -194,10 +194,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_facebook_auth_web
-      sha256: "0e2960e9e23f2538e29b406495e18b047fbf233abfaed8d2b99acda17a2f7479"
+      sha256: "22dca8091409309ad85b9f430fbd8f57b686276979da5195e7e97587352567ce"
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.1"
+    version: "5.0.0"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -465,7 +465,7 @@ packages:
     source: hosted
     version: "4.7.1"
   iris_method_channel:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: iris_method_channel
       sha256: bfb5cfc6c6eae42da8cd1b35977a72d8b8881848a5dfc3d672e4760a907d11a0
@@ -476,10 +476,10 @@ packages:
     dependency: transitive
     description:
       name: js
-      sha256: "53385261521cc4a0c4658fd0ad07a7d14591cf8fc33abbceae306ddb974888dc"
+      sha256: f2c445dce49627136094980615a031419f7f3eb393237e4ecd97ac15dea343f3
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.2"
+    version: "0.6.7"
   json_annotation:
     dependency: transitive
     description:
