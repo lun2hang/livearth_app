@@ -88,8 +88,8 @@ class RtmManager {
     
     final message = AgoraRtmMessage.fromText(text);
     // 参数3: enableOfflineMessaging = true (开启离线消息)
-    // 参数4: enableHistoricalMessaging = false
-    await _client!.sendMessageToPeer(peerId, message, true, false);
+    // 参数4: enableHistoricalMessaging = true (建议同时开启历史消息，以确保离线缓存生效)
+    await _client!.sendMessageToPeer(peerId, message, true, true);
 
     // 1. 发送成功后，存入缓存
     try {
