@@ -991,7 +991,29 @@ class _MainScreenState extends State<MainScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.person_outline, color: Colors.grey),
+                    // 增加红点监听
+                    ValueListenableBuilder<Map<String, int>>(
+                      valueListenable: RtmManager().unreadCountsNotifier,
+                      builder: (context, counts, child) {
+                        final total = counts.values.fold(0, (sum, c) => sum + c);
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.person_outline, color: Colors.grey),
+                            if (total > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                     const SizedBox(height: 4),
                     const Text(
                       "我的",

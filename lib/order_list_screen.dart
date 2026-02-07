@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/order.dart';
 import 'main.dart';
 import 'order_detail_screen.dart';
+import 'chat_screen.dart'; // 导入 RtmManager
 
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
@@ -62,49 +63,70 @@ class _OrderListScreenState extends State<OrderListScreen> {
     final icon = isTaskOrder ? Icons.lightbulb_outline : Icons.camera_roll_outlined;
     final color = isTaskOrder ? Colors.blue : Colors.orange;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-      child: ListTile(
-        onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => OrderDetailScreen(order: order)),
-          );
-          if (result == true) {
-            _loadData(); // 刷新列表
-          }
-        },
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(
+    return Stack(
+      children: [
+        Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+          child: ListTile(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => OrderDetailScreen(order: order)),
+              );
+              if (result == true) {
+                _loadData(); // 刷新列表
+              }
+            },
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+              child: Icon(icon, color: color),
+            ),
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.attach_money, size: 16, color: Colors.red),
-                Text("${order.amount}", style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
-                Icon(_getStatusIcon(order.status), size: 16, color: _getStatusColor(order.status)),
-                const SizedBox(width: 4),
-                Text(order.status, style: TextStyle(fontSize: 13, color: _getStatusColor(order.status), fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.attach_money, size: 16, color: Colors.red),
+                    Text("${order.amount}", style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 12),
+                    Icon(_getStatusIcon(order.status), size: 16, color: _getStatusColor(order.status)),
+                    const SizedBox(width: 4),
+                    Text(order.status, style: TextStyle(fontSize: 13, color: _getStatusColor(order.status), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text("消费者: ${order.consumer.nickname ?? order.consumer.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                Text("供给者: ${order.provider.nickname ?? order.provider.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                Text("开始时间: ${_formatTime(order.startTime ?? order.createdAt)}", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               ],
             ),
-            const SizedBox(height: 4),
-            Text("消费者: ${order.consumer.nickname ?? order.consumer.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-            Text("供给者: ${order.provider.nickname ?? order.provider.username}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-            Text("开始时间: ${_formatTime(order.startTime ?? order.createdAt)}", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          ],
+            isThreeLine: true,
+          ),
         ),
-        isThreeLine: true,
-      ),
+        // 右上角红点
+        Positioned(
+          right: 12,
+          top: 12,
+          child: ValueListenableBuilder<Map<String, int>>(
+            valueListenable: RtmManager().unreadCountsNotifier,
+            builder: (context, counts, child) {
+              final count = counts[order.id.toString()] ?? 0;
+              if (count == 0) return const SizedBox.shrink();
+              return Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

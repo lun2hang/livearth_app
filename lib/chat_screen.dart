@@ -21,6 +21,10 @@ class RtmManager {
   final _storage = const FlutterSecureStorage();
   String? _currentUid;
 
+  // 未读消息计数: orderId -> count
+  final ValueNotifier<Map<String, int>> unreadCountsNotifier = ValueNotifier({});
+  String? _activeOrderId; // 当前处于活跃状态的聊天订单ID
+
   bool get isLogin => _client != null;
 
   /// 初始化并登录 RTM
@@ -29,6 +33,7 @@ class RtmManager {
 
     _currentUid = uid;
     await _loadCache(); // 优先加载本地缓存
+    await _loadUnreadCache(); // 加载未读计数
 
     debugPrint("🔄 [RTM] 开始全局初始化: UID=$uid");
     try {
@@ -49,6 +54,16 @@ class RtmManager {
           }
           _messageCache[peerId]!.add(map);
           await _saveCache(); // 持久化保存
+
+          // 2. 更新未读计数
+          final String orderId = map['order_id'].toString();
+          // 如果当前不在该订单的聊天窗口，则增加未读计数
+          if (_activeOrderId != orderId) {
+            final current = Map<String, int>.from(unreadCountsNotifier.value);
+            current[orderId] = (current[orderId] ?? 0) + 1;
+            unreadCountsNotifier.value = current;
+            await _saveUnreadCache();
+          }
         } catch (e) {
           debugPrint("❌ [RTM] 缓存接收消息失败: $e");
         }
@@ -126,6 +141,48 @@ class RtmManager {
     }
   }
 
+  /// 进入聊天窗口 (清除未读)
+  void enterChat(String orderId) {
+    _activeOrderId = orderId;
+    _clearUnread(orderId);
+  }
+
+  /// 离开聊天窗口
+  void leaveChat() {
+    _activeOrderId = null;
+  }
+
+  Future<void> _clearUnread(String orderId) async {
+    final current = Map<String, int>.from(unreadCountsNotifier.value);
+    if (current.containsKey(orderId)) {
+      current.remove(orderId);
+      unreadCountsNotifier.value = current;
+      await _saveUnreadCache();
+    }
+  }
+
+  Future<void> _loadUnreadCache() async {
+    if (_currentUid == null) return;
+    try {
+      final str = await _storage.read(key: 'rtm_unread_$_currentUid');
+      if (str != null) {
+        final Map<String, dynamic> decoded = jsonDecode(str);
+        unreadCountsNotifier.value = decoded.map((k, v) => MapEntry(k, v as int));
+      }
+    } catch (e) {
+      debugPrint("❌ [RTM] 加载未读计数失败: $e");
+    }
+  }
+
+  Future<void> _saveUnreadCache() async {
+    if (_currentUid == null) return;
+    try {
+      await _storage.write(key: 'rtm_unread_$_currentUid', value: jsonEncode(unreadCountsNotifier.value));
+    } catch (e) {
+      debugPrint("❌ [RTM] 保存未读计数失败: $e");
+    }
+  }
+
   /// 登出 (通常在切换账号时调用)
   Future<void> logout() async {
     try {
@@ -165,11 +222,16 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    // 修复: 延迟执行状态更新，避免在构建期间触发 notifyListeners 导致 "setState during build" 异常
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RtmManager().enterChat(widget.orderId.toString());
+    });
     _initAgoraRtm();
   }
 
   @override
   void dispose() {
+    RtmManager().leaveChat(); // 标记离开
     // 移除监听，但不要断开连接！
     RtmManager().onMessageReceived = null;
     _controller.dispose();

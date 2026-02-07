@@ -260,7 +260,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
         if (isOther)
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.blue),
+            icon: ValueListenableBuilder<Map<String, int>>(
+              valueListenable: RtmManager().unreadCountsNotifier,
+              builder: (context, counts, child) {
+                final count = counts[widget.order.id.toString()] ?? 0;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.chat_bubble_outline, color: Colors.blue),
+                    if (count > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+                      ),
+                  ],
+                );
+              },
+            ),
             onPressed: () {
               if (_currentUserId != null) {
                 Navigator.push(

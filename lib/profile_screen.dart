@@ -11,6 +11,7 @@ import 'api/dio_client.dart';
 import 'history_screen.dart'; // 导入历史记录页面
 import 'main.dart'; // 导入 MockAPI
 import 'order_list_screen.dart'; // 导入订单列表页面
+import 'chat_screen.dart'; // 导入 RtmManager
 
 /// 用户中心页面 (未登录状态)
 class ProfileScreen extends StatefulWidget {
@@ -483,7 +484,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   () => _handleGridItemTap('我发布的需求', MockAPI.fetchUserTasks)),
                 
                 _buildGridItem(context, Icons.receipt_long_outlined, '我的历史订单', 
-                  _handleOrderHistoryTap),
+                  _handleOrderHistoryTap, showBadge: true), // 开启红点显示
                 
                 _buildGridItem(context, Icons.bar_chart_outlined, '历史统计数据', 
                   () => print("UI交互: 点击 '历史统计数据'")),
@@ -521,7 +522,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // 构建网格按钮的辅助方法
-  Widget _buildGridItem(BuildContext context, IconData icon, String label, VoidCallback onTap) {
+  Widget _buildGridItem(BuildContext context, IconData icon, String label, VoidCallback onTap, {bool showBadge = false}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -533,7 +534,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.grey[700]),
+            if (showBadge)
+              ValueListenableBuilder<Map<String, int>>(
+                valueListenable: RtmManager().unreadCountsNotifier,
+                builder: (context, counts, child) {
+                  final total = counts.values.fold(0, (sum, c) => sum + c);
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(icon, color: Colors.grey[700]),
+                      if (total > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              )
+            else
+              Icon(icon, color: Colors.grey[700]),
             const SizedBox(height: 8),
             Text(label, style: const TextStyle(fontSize: 12)),
           ],
