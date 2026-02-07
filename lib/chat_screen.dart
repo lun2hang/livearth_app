@@ -86,7 +86,12 @@ class RtmManager {
   Future<void> sendMessageToPeer(String peerId, String text) async {
     if (_client == null) throw Exception("RTM 服务未连接");
     
-    // 1. 存入缓存
+    final message = AgoraRtmMessage.fromText(text);
+    // 参数3: enableOfflineMessaging = true (开启离线消息)
+    // 参数4: enableHistoricalMessaging = false
+    await _client!.sendMessageToPeer(peerId, message, true, false);
+
+    // 1. 发送成功后，存入缓存
     try {
       final Map<String, dynamic> map = jsonDecode(text);
       map['_isMe'] = true; // 标记为发送
@@ -98,11 +103,6 @@ class RtmManager {
     } catch (e) {
       debugPrint("❌ [RTM] 缓存发送消息失败: $e");
     }
-
-    final message = AgoraRtmMessage.fromText(text);
-    // 参数3: enableOfflineMessaging = true (开启离线消息)
-    // 参数4: enableHistoricalMessaging = false
-    await _client!.sendMessageToPeer(peerId, message, true, false);
   }
 
   /// 获取缓存的消息
