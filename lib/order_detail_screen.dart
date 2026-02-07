@@ -270,6 +270,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       orderId: widget.order.id,
                       currentUserId: _currentUserId!,
                       otherUserName: user.nickname ?? user.username,
+                      otherUserId: user.id,
                     ),
                   ),
                 );

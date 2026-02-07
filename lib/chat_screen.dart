@@ -103,12 +103,14 @@ class ChatScreen extends StatefulWidget {
   final int orderId;
   final String currentUserId;
   final String otherUserName;
+  final String otherUserId;
 
   const ChatScreen({
     super.key,
     required this.orderId,
     required this.currentUserId,
     required this.otherUserName,
+    required this.otherUserId,
   });
 
   @override
@@ -138,29 +140,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initAgoraRtm() async {
     try {
-      // 1. 获取 RTC 信息以得到 peer_uid (对方ID)
-      final data = await DioClient().getRtcToken(widget.orderId);
-      if (data == null) {
+      // 1. 设置 peerUid (直接从 widget 参数获取，并去除 UUID 中的减号以匹配 RTM 格式)
+      _peerUid = widget.otherUserId.replaceAll('-', '');
+
+      if (_peerUid!.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("无法获取聊天凭证")));
-          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("聊天参数错误: 对方ID为空")));
         }
         return;
       }
-
-      // 使用 ?? "" 防止 null 变成 "null" 字符串
-      final String appId = (data['app_id'] ?? "").toString().trim();
-      final String peerUid = (data['peer_uid'] ?? "").toString().trim();
-
-      if (appId.isEmpty || peerUid.isEmpty) {
-        debugPrint("❌ RTM 参数错误: AppID=$appId, PeerUID=$peerUid");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("聊天参数不完整")));
-        }
-        return;
-      }
-      
-      _peerUid = peerUid;
 
       // 2. 加载本地缓存的历史消息 (关键修改)
       final history = RtmManager().getMessages(_peerUid!, widget.orderId.toString());
@@ -189,10 +177,11 @@ class _ChatScreenState extends State<ChatScreen> {
         // 如果未登录，需要单独获取 RTM Token
         final rtmData = await DioClient().getRtmToken();
         if (rtmData != null) {
+          final String appId = (rtmData['app_id'] ?? "").toString().trim();
           final String rtmToken = (rtmData['token'] ?? rtmData['rtm_token'] ?? "").toString().trim();
           final String uid = (rtmData['uid'] ?? "").toString().trim().replaceAll('-', '');
           
-          if (rtmToken.isNotEmpty && uid.isNotEmpty) {
+          if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
             await RtmManager().init(appId, rtmToken, uid);
           }
         }
