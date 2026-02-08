@@ -312,8 +312,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initAgoraRtm() async {
     try {
-      // 1. 设置 peerUid (直接从 widget 参数获取，并去除 UUID 中的减号以匹配 RTM 格式)
-      _peerUid = widget.otherUserId.replaceAll('-', '');
+      // 1. 设置 peerUid (直接从 widget 参数获取)
+      _peerUid = widget.otherUserId;
 
       if (_peerUid!.isEmpty) {
         if (mounted) {
@@ -329,7 +329,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (rtmData != null) {
           final String appId = (rtmData['app_id'] ?? "").toString().trim();
           final String rtmToken = (rtmData['token'] ?? rtmData['rtm_token'] ?? "").toString().trim();
-          final String uid = (rtmData['uid'] ?? "").toString().trim().replaceAll('-', '');
+          final String uid = (rtmData['uid'] ?? "").toString().trim();
           
           if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
             await RtmManager().init(appId, rtmToken, uid);

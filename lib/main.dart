@@ -291,7 +291,7 @@ class _MainScreenState extends State<MainScreen> {
         final String appId = (data['app_id'] ?? "").toString().trim();
         // 兼容后端可能返回 'token' 或 'rtm_token'
         final String rtmToken = (data['token'] ?? data['rtm_token'] ?? "").toString().trim();
-        final String uid = (data['uid'] ?? "").toString().trim().replaceAll('-', '');
+        final String uid = (data['uid'] ?? "").toString().trim();
         
         if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
           await RtmManager().init(appId, rtmToken, uid);
