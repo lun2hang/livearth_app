@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:agora_rtm/agora_rtm.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
 
 /// 全局 RTM 管理器 (单例)
@@ -14,11 +13,11 @@ class RtmManager {
   RtmClient? _client;
   // UI 消息回调: (String message, String peerId)
   Function(String, String)? onMessageReceived;
+  // 历史消息同步完成回调
+  VoidCallback? onHistorySynced;
   // 消息缓存: peerId -> List<MessageJson> (包含 _isMe 字段)
   final Map<String, List<Map<String, dynamic>>> _messageCache = {};
   
-  // 本地存储
-  final _storage = const FlutterSecureStorage();
   String? _currentUid;
 
   // 未读消息计数: orderId -> count
@@ -32,8 +31,9 @@ class RtmManager {
     if (_client != null) return; // 已连接则跳过
 
     _currentUid = uid;
-    await _loadCache(); // 优先加载本地缓存
-    await _loadUnreadCache(); // 加载未读计数
+    
+    // [新增] 从服务端拉取未读计数快照并覆盖本地 (服务端一致性)
+    await _fetchServerUnreadCounts();
 
     debugPrint("🔄 [RTM] 开始全局初始化: UID=$uid");
     try {
@@ -61,12 +61,19 @@ class RtmManager {
       }
       
       debugPrint("✅ [RTM] 全局登录成功");
-      // 登录成功后，拉取发给自己的离线消息
-      _pullOfflineMessages(uid);
+      // 启动云端增量同步
+      _syncCloudHistory();
     } catch (e) {
       debugPrint("❌ [RTM] 全局登录失败: $e");
       _client = null;
     }
+  }
+
+  /// 从服务端拉取未读计数
+  Future<void> _fetchServerUnreadCounts() async {
+    final counts = await DioClient().getUnreadCounts();
+    // 直接覆盖本地变量，以服务端为准
+    unreadCountsNotifier.value = counts;
   }
 
   Future<void> _handleIncomingMessage(String text, String peerId, {bool isOfflineMessage = false}) async {
@@ -91,7 +98,6 @@ class RtmManager {
         _messageCache[peerId] = [];
       }
       _messageCache[peerId]!.add(map);
-      await _saveCache(); // 持久化保存
 
       // 2. 更新未读计数
       final String orderId = map['order_id'].toString();
@@ -100,7 +106,12 @@ class RtmManager {
         final current = Map<String, int>.from(unreadCountsNotifier.value);
         current[orderId] = (current[orderId] ?? 0) + 1;
         unreadCountsNotifier.value = current;
-        await _saveUnreadCache();
+      } else {
+        // [新增] 如果在聊天窗口，立即发送 ACK
+        final int msgId = map['msg_id'] as int? ?? 0;
+        if (msgId > 0) {
+          DioClient().sendReadAck(int.parse(orderId), msgId);
+        }
       }
     } catch (e) {
       debugPrint("❌ [RTM] 缓存接收消息失败: $e");
@@ -109,6 +120,78 @@ class RtmManager {
     // 转发给当前的 UI 监听器 (如果有)
     if (onMessageReceived != null) {
       onMessageReceived!(text, peerId);
+    }
+  }
+
+  /// 从云端增量同步历史消息
+  Future<void> _syncCloudHistory() async {
+    if (_currentUid == null) return;
+    debugPrint("☁️ [Sync] 开始全量同步消息...");
+
+    try {
+      // 移除本地缓存后，每次从 0 开始拉取 (或由后端控制默认返回最近 N 条)
+      final list = await DioClient().getChatHistory(sinceId: 0);
+      if (list.isEmpty) return;
+
+      int maxId = 0;
+      bool hasNew = false;
+
+      for (var item in list) {
+        final int msgId = item['id'];
+        if (msgId > maxId) maxId = msgId; // 仅用于日志记录
+
+        final int orderId = item['order_id'];
+        final String senderId = item['sender_id'].toString();
+        final String receiverId = item['receiver_id'].toString();
+        final String content = item['content'];
+        final int timestamp = item['client_timestamp'];
+        final String msgType = item['msg_type'] ?? 'text';
+
+        final bool isMe = (senderId == _currentUid);
+        // 如果我是发送者，对方是接收者；如果我是接收者，对方是发送者
+        final String peerId = isMe ? receiverId : senderId;
+
+        final Map<String, dynamic> localMsg = {
+          'order_id': orderId,
+          'content': content,
+          'type': msgType,
+          'timestamp': timestamp,
+          '_isMe': isMe,
+          'msg_id': msgId
+        };
+
+        if (!_messageCache.containsKey(peerId)) {
+          _messageCache[peerId] = [];
+        }
+
+        // 去重: 根据 msg_id 或 (timestamp + content)
+        final exists = _messageCache[peerId]!.any((m) =>
+            (m['msg_id'] == msgId) ||
+            (m['timestamp'] == timestamp && m['content'] == content));
+
+        if (!exists) {
+          _messageCache[peerId]!.add(localMsg);
+          hasNew = true;
+          // ⚠️ 关键修改: 历史消息同步时不更新未读计数！
+          // 因为未读计数已经由 _fetchServerUnreadCounts 准确获取了。
+          // 如果这里再 ++，会导致重复计算。 
+        }
+      }
+
+      if (hasNew) {
+        if (onHistorySynced != null) onHistorySynced!();
+        debugPrint("✅ [Sync] 同步完成，更新至 ID=$maxId");
+        
+        // [新增] 如果当前处于某个聊天室，且同步到了该聊天室的消息，尝试更新 ACK
+        if (_activeOrderId != null) {
+           final currentMax = _getLatestMsgId(_activeOrderId!);
+           if (currentMax > 0) {
+             DioClient().sendReadAck(int.parse(_activeOrderId!), currentMax);
+           }
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ [Sync] 同步失败: $e");
     }
   }
 
@@ -144,30 +227,56 @@ class RtmManager {
 
   /// 发送 P2P 消息
   Future<void> sendMessageToPeer(String peerId, String text) async {
-    if (_client == null) throw Exception("RTM 服务未连接");
+    // 1. 解析原始消息并同步到云端
+    Map<String, dynamic> msgMap = jsonDecode(text);
+    bool cloudSuccess = false;
+
+    try {
+      final apiData = {
+        "order_id": msgMap['order_id'],
+        "content": msgMap['content'],
+        "type": msgMap['type'] ?? "text",
+        "timestamp": msgMap['timestamp']
+      };
+      final res = await DioClient().saveChatMessage(apiData);
+      if (res != null && res['msg_id'] != null) {
+        // 将后端生成的 msg_id 注入到 RTM 消息中，方便接收端去重
+        msgMap['msg_id'] = res['msg_id'];
+        text = jsonEncode(msgMap);
+        cloudSuccess = true;
+      }
+    } catch (e) {
+      debugPrint("⚠️ [RTM] 消息同步云端失败，继续尝试发送 RTM: $e");
+    }
     
     // RTM 2.x 发送消息 (User Channel)
-    final (status, _) = await _client!.publish(
-      peerId, // channelName = target userId
-      text,
-      channelType: RtmChannelType.user,
-      customType: 'PlainText',
-      storeInHistory: false, // 5. 直接使用命名参数，移除 PublishOptions
-    );
+    if (_client != null) {
+      final (status, _) = await _client!.publish(
+        peerId, // channelName = target userId
+        text,   // 发送可能包含 msg_id 的 JSON
+        channelType: RtmChannelType.user,
+        customType: 'PlainText',
+        storeInHistory: false, // 5. 直接使用命名参数，移除 PublishOptions
+      );
 
-    if (status.error == true) {
-      throw Exception("发送失败: ${status.errorCode}, ${status.reason}");
+      if (status.error == true) {
+        debugPrint("⚠️ [RTM] 发送失败: ${status.errorCode}, ${status.reason}");
+        // 如果云端保存成功，则不抛出异常，视为发送成功
+        if (!cloudSuccess) {
+          throw Exception("发送失败: ${status.errorCode}, ${status.reason}");
+        }
+      }
+    } else if (!cloudSuccess) {
+      throw Exception("RTM 服务未连接且云端保存失败");
     }
 
-    // 1. 发送成功后，存入缓存
+    // 3. 发送成功后，存入本地缓存
     try {
-      final Map<String, dynamic> map = jsonDecode(text);
-      map['_isMe'] = true; // 标记为发送
+      msgMap['_isMe'] = true; // 标记为发送
       if (!_messageCache.containsKey(peerId)) {
         _messageCache[peerId] = [];
       }
-      _messageCache[peerId]!.add(map);
-      await _saveCache(); // 持久化保存
+      _messageCache[peerId]!.add(msgMap);
     } catch (e) {
       debugPrint("❌ [RTM] 缓存发送消息失败: $e");
     }
@@ -180,39 +289,30 @@ class RtmManager {
     return list.where((m) => m['order_id'].toString() == orderId.toString()).toList();
   }
 
-  /// 从本地存储加载缓存
-  Future<void> _loadCache() async {
-    if (_currentUid == null) return;
-    try {
-      final jsonStr = await _storage.read(key: 'rtm_cache_$_currentUid');
-      if (jsonStr != null) {
-        final Map<String, dynamic> decoded = jsonDecode(jsonStr);
-        _messageCache.clear();
-        decoded.forEach((key, value) {
-          _messageCache[key] = List<Map<String, dynamic>>.from(
-            (value as List).map((item) => Map<String, dynamic>.from(item))
-          );
-        });
-      }
-    } catch (e) {
-      debugPrint("❌ [RTM] 加载本地缓存失败: $e");
-    }
-  }
-
-  /// 保存缓存到本地
-  Future<void> _saveCache() async {
-    if (_currentUid == null) return;
-    try {
-      await _storage.write(key: 'rtm_cache_$_currentUid', value: jsonEncode(_messageCache));
-    } catch (e) {
-      debugPrint("❌ [RTM] 保存本地缓存失败: $e");
-    }
-  }
-
-  /// 进入聊天窗口 (清除未读)
+  /// 进入聊天窗口 (清除未读 + 发送回执)
   void enterChat(String orderId) {
     _activeOrderId = orderId;
     _clearUnread(orderId);
+    
+    // 发送已读回执 (告诉后端我读到了哪里)
+    final int maxId = _getLatestMsgId(orderId);
+    if (maxId > 0) {
+      DioClient().sendReadAck(int.parse(orderId), maxId);
+    }
+  }
+
+  /// 获取指定订单中最大的消息ID
+  int _getLatestMsgId(String orderId) {
+    int maxId = 0;
+    _messageCache.forEach((peerId, msgs) {
+      for (var msg in msgs) {
+        if (msg['order_id'].toString() == orderId) {
+          final id = msg['msg_id'] as int? ?? 0;
+          if (id > maxId) maxId = id;
+        }
+      }
+    });
+    return maxId;
   }
 
   /// 离开聊天窗口
@@ -228,29 +328,6 @@ class RtmManager {
     if (current.containsKey(orderId)) {
       current.remove(orderId);
       unreadCountsNotifier.value = current;
-      await _saveUnreadCache();
-    }
-  }
-
-  Future<void> _loadUnreadCache() async {
-    if (_currentUid == null) return;
-    try {
-      final str = await _storage.read(key: 'rtm_unread_$_currentUid');
-      if (str != null) {
-        final Map<String, dynamic> decoded = jsonDecode(str);
-        unreadCountsNotifier.value = decoded.map((k, v) => MapEntry(k, v as int));
-      }
-    } catch (e) {
-      debugPrint("❌ [RTM] 加载未读计数失败: $e");
-    }
-  }
-
-  Future<void> _saveUnreadCache() async {
-    if (_currentUid == null) return;
-    try {
-      await _storage.write(key: 'rtm_unread_$_currentUid', value: jsonEncode(unreadCountsNotifier.value));
-    } catch (e) {
-      debugPrint("❌ [RTM] 保存未读计数失败: $e");
     }
   }
 
@@ -260,6 +337,12 @@ class RtmManager {
       await _client?.logout();
       await _client?.release();
       _client = null;
+      
+      // 清理内存中的用户状态
+      _currentUid = null;
+      _messageCache.clear();
+      unreadCountsNotifier.value = {};
+      _activeOrderId = null;
     } catch (e) {
       debugPrint("❌ [RTM] 登出失败: $e");
     }
@@ -305,6 +388,7 @@ class _ChatScreenState extends State<ChatScreen> {
     RtmManager().leaveChat(widget.orderId.toString()); // 标记离开当前特定订单
     // 移除监听，但不要断开连接！
     RtmManager().onMessageReceived = null;
+    RtmManager().onHistorySynced = null;
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -378,6 +462,11 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       };
 
+      // 5. 注册历史同步回调 (当后台增量拉取完成后刷新 UI)
+      RtmManager().onHistorySynced = () {
+        if (mounted) _reloadHistory();
+      };
+
     } on MissingPluginException {
       debugPrint("❌ RTM 插件未加载: 请停止应用并重新编译运行 (Hot Restart 无法加载新插件)");
       if (mounted) {
@@ -389,6 +478,27 @@ class _ChatScreenState extends State<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("聊天服务连接失败: $e")));
       }
     }
+  }
+
+  void _reloadHistory() {
+    final history = RtmManager().getMessages(widget.otherUserId, widget.orderId.toString());
+    setState(() {
+      _messages.clear();
+      for (var map in history) {
+        final int ts = (map['timestamp'] as num?)?.toInt() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+        _messages.add(_Message(
+          text: map['content'] ?? '',
+          isMe: map['_isMe'] == true,
+          timestamp: ts,
+        ));
+      }
+    });
+    // 保持在底部
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
   }
 
   void _addMessage(String text, bool isMe, int timestamp) {
@@ -411,7 +521,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    if (!RtmManager().isLogin || _peerUid == null || _peerUid!.isEmpty) {
+    if (_peerUid == null || _peerUid!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("聊天服务未连接")));
       return;
     }

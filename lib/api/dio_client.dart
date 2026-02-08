@@ -97,4 +97,55 @@ class DioClient {
       return null;
     }
   }
+
+  /// 保存聊天消息到云端
+  Future<Map<String, dynamic>?> saveChatMessage(Map<String, dynamic> msgData) async {
+    try {
+      final response = await dio.post('/messages/send', data: msgData);
+      return response.data;
+    } catch (e) {
+      print("❌ [Dio] 保存消息失败: $e");
+      return null;
+    }
+  }
+
+  /// 获取聊天历史 (支持增量同步)
+  Future<List<dynamic>> getChatHistory({int? orderId, int? sinceId}) async {
+    try {
+      final Map<String, dynamic> query = {};
+      if (orderId != null) query['order_id'] = orderId;
+      if (sinceId != null) query['since_id'] = sinceId;
+      
+      final response = await dio.get('/messages/history', queryParameters: query);
+      return response.data;
+    } catch (e) {
+      print("❌ [Dio] 获取聊天历史失败: $e");
+      return [];
+    }
+  }
+
+  /// 获取全局未读消息计数 (服务端为准)
+  Future<Map<String, int>> getUnreadCounts() async {
+    try {
+      final response = await dio.get('/unread-counts');
+      // JSON Key 总是 String，需要转换
+      final data = response.data as Map<String, dynamic>;
+      return data.map((key, value) => MapEntry(key, value as int));
+    } catch (e) {
+      print("❌ [Dio] 获取未读计数失败: $e");
+      return {};
+    }
+  }
+
+  /// 提交已读回执
+  Future<void> sendReadAck(int orderId, int latestMessageId) async {
+    try {
+      await dio.post('/read-ack', data: {
+        'order_id': orderId,
+        'latest_message_id': latestMessageId,
+      });
+    } catch (e) {
+      print("❌ [Dio] 提交已读回执失败: $e");
+    }
+  }
 }

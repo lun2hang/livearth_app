@@ -128,6 +128,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _avatarUrl = avatar;
         });
       }
+
+      // 登录成功后，立即初始化 RTM 以获取未读消息
+      await _initRtmAfterLogin();
     } catch (e) {
       print("Google 登录后端验证失败: $e");
       if (mounted) {
@@ -177,6 +180,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _avatarUrl = avatar;
         });
       }
+
+      // 登录成功后，立即初始化 RTM 以获取未读消息
+      await _initRtmAfterLogin();
     } catch (e) {
       print("Facebook 登录后端验证失败: $e");
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("登录失败: $e")));
@@ -221,6 +227,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (email != null) _email = email;
         });
       }
+
+      // 登录成功后，立即初始化 RTM 以获取未读消息
+      await _initRtmAfterLogin();
     } catch (e) {
       print("Apple 登录后端验证失败: $e");
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("登录失败: $e")));
@@ -228,6 +237,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handleSignOut() async {
+    // 1. 登出 RTM 服务 (断开连接并清理内存状态)
+    await RtmManager().logout();
+
     // 清除本地存储
     await _storage.deleteAll();
     // 断开连接
@@ -241,6 +253,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _avatarUrl = null;
       _location = null;
     });
+  }
+
+  // 登录后初始化 RTM (复用 MainScreen 中的逻辑)
+  Future<void> _initRtmAfterLogin() async {
+    try {
+      final data = await DioClient().getRtmToken();
+      if (data != null) {
+        final String appId = (data['app_id'] ?? "").toString().trim();
+        final String rtmToken = (data['token'] ?? data['rtm_token'] ?? "").toString().trim();
+        final String uid = (data['uid'] ?? "").toString().trim();
+        
+        if (appId.isNotEmpty && rtmToken.isNotEmpty && uid.isNotEmpty) {
+          await RtmManager().init(appId, rtmToken, uid);
+        }
+      }
+    } catch (e) {
+      print("登录后 RTM 初始化失败: $e");
+    }
   }
 
   // 处理功能按钮点击
@@ -458,6 +488,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _email = result['email'];
                         _avatarUrl = result['avatar'];
                       });
+                      
+                      // 登录成功后，立即初始化 RTM 以获取未读消息
+                      await _initRtmAfterLogin();
                     }
                   }
                 },
