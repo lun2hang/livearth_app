@@ -601,6 +601,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             color: Colors.white,
             child: SafeArea(
+              top: false, // 底部栏不需要顶部安全区域，避免高度异常
               child: Row(
                 children: [
                   Expanded(
