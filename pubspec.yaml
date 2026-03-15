@@ -47,6 +47,8 @@ dependencies:
   agora_rtc_engine: 6.2.6
   agora_rtm: ^2.1.0
   permission_handler: ^11.0.0
+  image_picker: ^1.2.1
+  image_cropper: ^11.0.0
 
 # 如果 pub get 仍然报错 (iris_method_channel 版本不一致)，可以使用 overrides 强制统一
 dependency_overrides:

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -5,6 +6,8 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'login_screen.dart'; // 导入新的登录页面
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
@@ -31,6 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _avatarUrl;
   String? _location;
   
+  bool _isUploadingAvatar = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
@@ -412,6 +416,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // 显示图片来源选择弹窗
+  Future<void> _showImageSourceDialog() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('从相册选择'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickAndUploadImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('拍照'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickAndUploadImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 选择、裁剪并上传头像
+  Future<void> _pickAndUploadImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: source);
+      if (pickedFile == null) return;
+
+      // 使用 image_cropper 强制裁剪为 1:1 正方形并压缩到 80% 质量
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        maxWidth: 400, // 缩小到 400x400，完全满足移动端高清头像需求，且极致省流
+        maxHeight: 400,
+        compressFormat: ImageCompressFormat.jpg, // 强制保存为 JPG 格式，剔除透明通道，极大减小体积
+        compressQuality: 80,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: '裁剪头像',
+            toolbarColor: Colors.black,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(
+            title: '裁剪头像',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (croppedFile == null) return;
+
+      setState(() {
+        _isUploadingAvatar = true;
+      });
+
+      // 使用 Dio 多部分请求上传头像
+      final dio = DioClient().dio;
+      final formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(croppedFile.path, filename: 'avatar.jpg'),
+      });
+
+      final response = await dio.post('/users/me/avatar', data: formData);
+
+      // 更新本地状态
+      if (response.statusCode == 200 && response.data['status'] == 'success') {
+        final newAvatarUrl = response.data['avatar_url'];
+        await _storage.write(key: 'avatar', value: newAvatarUrl);
+        
+        if (mounted) {
+          setState(() {
+            _avatarUrl = newAvatarUrl;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("头像上传成功")));
+        }
+      }
+    } catch (e) {
+      print("上传头像失败: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("头像上传失败，请重试")));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingAvatar = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -433,17 +537,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (_avatarUrl != null)
-                          CircleAvatar(
-                            backgroundImage:
-                                NetworkImage(_avatarUrl!),
-                            radius: 40,
-                          )
-                        else
-                          const CircleAvatar(
-                            radius: 40,
-                            child: Icon(Icons.person, size: 40, color: Colors.grey),
+                        GestureDetector(
+                          onTap: _showImageSourceDialog,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (_avatarUrl != null)
+                                CircleAvatar(
+                                  backgroundImage: NetworkImage(_avatarUrl!),
+                                  radius: 40,
+                                )
+                              else
+                                const CircleAvatar(
+                                  radius: 40,
+                                  child: Icon(Icons.person, size: 40, color: Colors.grey),
+                                ),
+                              // 头像右下角的编辑小图标
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                                  child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                                ),
+                              ),
+                              // 正在上传时的半透明遮罩与加载框
+                              if (_isUploadingAvatar)
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  ),
+                                ),
+                            ],
                           ),
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           _username ?? '无昵称',

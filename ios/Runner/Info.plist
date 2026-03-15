@@ -82,6 +82,10 @@
 		</array>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>我们需要您的位置信息以展示您所在的城市。</string>
+		<key>NSCameraUsageDescription</key>
+		<string>此应用需要相机权限来拍摄和设置用户头像。</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>此应用需要相册权限来选择和设置用户头像。</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
