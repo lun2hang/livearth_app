@@ -129,6 +129,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
+                      // 缩小后的发布者信息
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: widget.task.avatar != null && widget.task.avatar!.isNotEmpty
+                                ? NetworkImage(widget.task.avatar!)
+                                : null,
+                            radius: 12,
+                            backgroundColor: Colors.grey[200],
+                            child: widget.task.avatar == null || widget.task.avatar!.isEmpty
+                                ? const Icon(Icons.person, size: 16, color: Colors.grey)
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.task.nickname ?? "匿名用户",
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(

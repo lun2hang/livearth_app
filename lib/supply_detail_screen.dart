@@ -124,15 +124,43 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Icon(Icons.star, color: Colors.orange, size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        "${widget.supply.rating}",
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
+                      // 缩小后的发布者信息
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: widget.supply.avatar != null && widget.supply.avatar!.isNotEmpty
+                                ? NetworkImage(widget.supply.avatar!)
+                                : null,
+                            radius: 12,
+                            backgroundColor: Colors.grey[200],
+                            child: widget.supply.avatar == null || widget.supply.avatar!.isEmpty
+                                ? const Icon(Icons.person, size: 16, color: Colors.grey)
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.supply.nickname ?? "匿名用户",
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star, color: Colors.orange, size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${widget.supply.rating}",
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
+                          ),
+                        ],
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -144,7 +172,6 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                           style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         widget.supply.status,
                         style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
