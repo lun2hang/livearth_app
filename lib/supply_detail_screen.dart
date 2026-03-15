@@ -91,19 +91,22 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 视频/图片占位
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(12),
+            // 视频/封面图占位
+            if (widget.supply.coverImageUrl != null && widget.supply.coverImageUrl!.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                height: 240,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: NetworkImage(widget.supply.coverImageUrl!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-              child: const Center(
-                child: Icon(Icons.play_circle_outline, color: Colors.white, size: 64),
-              ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+            ],
 
             // 标题卡片
             Container(

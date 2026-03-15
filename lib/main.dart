@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart'; // 导入 Dio 以处理异常
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -69,13 +71,19 @@ class MockAPI {
   }
 
   // 发布需求
-  static Future<void> publishTask(Task task) async {
+  static Future<void> publishTask(Task task, {File? coverFile}) async {
     final dio = DioClient().dio;
     try {
+      final formData = FormData.fromMap({
+        'item_data': jsonEncode(task.toJson()),
+        if (coverFile != null)
+          'cover_file': await MultipartFile.fromFile(coverFile.path, filename: 'cover.jpg'),
+      });
+
       // 调用 /create 接口，is_consumer=true 代表发布需求
       final response = await dio.post(
         '/create',
-        data: task.toJson(),
+        data: formData,
         queryParameters: {'is_consumer': true},
       );
       // 3. 获得返回值，并 print 出来
@@ -86,13 +94,19 @@ class MockAPI {
   }
 
   // 发布供给
-  static Future<void> publishSupply(Supply supply) async {
+  static Future<void> publishSupply(Supply supply, {File? coverFile}) async {
     final dio = DioClient().dio;
     try {
+      final formData = FormData.fromMap({
+        'item_data': jsonEncode(supply.toJson()),
+        if (coverFile != null)
+          'cover_file': await MultipartFile.fromFile(coverFile.path, filename: 'cover.jpg'),
+      });
+
       // 调用 /create 接口，is_consumer=false 代表发布供给
       final response = await dio.post(
         '/create',
-        data: supply.toJson(),
+        data: formData,
         queryParameters: {'is_consumer': false},
       );
       // 3. 获得返回值，并 print 出来
@@ -494,6 +508,9 @@ class _MainScreenState extends State<MainScreen> {
             createdAt: item.createdAt,
             validFrom: item.validFrom,
             validTo: item.validTo,
+            nickname: item.nickname,
+            avatar: item.avatar,
+            coverImageUrl: item.coverImageUrl,
           );
         } else if (item is Task) {
           _feedItems[index] = Task(
@@ -508,6 +525,9 @@ class _MainScreenState extends State<MainScreen> {
             createdAt: item.createdAt,
             validFrom: item.validFrom,
             validTo: item.validTo,
+            nickname: item.nickname,
+            avatar: item.avatar,
+            coverImageUrl: item.coverImageUrl,
           );
         }
       });
@@ -699,8 +719,16 @@ class _MainScreenState extends State<MainScreen> {
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(8),
+                        image: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(item.coverImageUrl!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                      child: const Icon(Icons.videocam, color: Colors.white, size: 32),
+                      child: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                          ? null
+                          : const Icon(Icons.videocam, color: Colors.white, size: 32),
                     ),
                     const SizedBox(width: 12),
                     // 右侧：信息内容
@@ -794,8 +822,16 @@ class _MainScreenState extends State<MainScreen> {
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(8),
+                        image: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(item.coverImageUrl!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                      child: const Icon(Icons.videocam, color: Colors.white, size: 32),
+                      child: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                          ? null
+                          : const Icon(Icons.videocam, color: Colors.white, size: 32),
                     ),
                     const SizedBox(width: 12),
                     // 右侧：信息内容

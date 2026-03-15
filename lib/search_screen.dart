@@ -175,8 +175,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(8),
+                      image: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                          ? DecorationImage(
+                              image: NetworkImage(item.coverImageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: const Icon(Icons.videocam, color: Colors.white, size: 32),
+                    child: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                        ? null
+                        : const Icon(Icons.videocam, color: Colors.white, size: 32),
                   ),
                   const SizedBox(width: 12),
                   // 右侧：信息内容
@@ -260,8 +268,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(8),
+                      image: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                          ? DecorationImage(
+                              image: NetworkImage(item.coverImageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: const Icon(Icons.videocam, color: Colors.white, size: 32),
+                    child: item.coverImageUrl != null && item.coverImageUrl!.isNotEmpty
+                        ? null
+                        : const Icon(Icons.videocam, color: Colors.white, size: 32),
                   ),
                   const SizedBox(width: 12),
                   // 右侧：信息内容

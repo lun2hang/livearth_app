@@ -13,6 +13,7 @@ class Supply {
   final String validTo;
   final String? nickname;
   final String? avatar;
+  final String? coverImageUrl;
 
   Supply({
     required this.id,
@@ -29,6 +30,7 @@ class Supply {
     required this.validTo,
     this.nickname,
     this.avatar,
+    this.coverImageUrl,
   });
 
   factory Supply.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class Supply {
       validTo: json['valid_to'] as String,
       nickname: json['nickname'] as String?,
       avatar: json['avatar'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
     );
   }
 
@@ -64,6 +67,7 @@ class Supply {
       'created_at': createdAt,
       'valid_from': validFrom,
       'valid_to': validTo,
+      'cover_image_url': coverImageUrl,
     };
   }
 }

@@ -12,6 +12,7 @@ class Task {
   final String validTo;
   final String? nickname;
   final String? avatar;
+  final String? coverImageUrl;
 
   Task({
     required this.id,
@@ -27,6 +28,7 @@ class Task {
     required this.validTo,
     this.nickname,
     this.avatar,
+    this.coverImageUrl,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,7 @@ class Task {
       validTo: json['valid_to'] as String,
       nickname: json['nickname'] as String?,
       avatar: json['avatar'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
     );
   }
 
@@ -60,6 +63,7 @@ class Task {
       'created_at': createdAt,
       'valid_from': validFrom,
       'valid_to': validTo,
+      'cover_image_url': coverImageUrl,
     };
   }
 }

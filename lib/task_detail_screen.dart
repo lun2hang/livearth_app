@@ -91,6 +91,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 封面图展示
+            if (widget.task.coverImageUrl != null && widget.task.coverImageUrl!.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                height: 240,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: NetworkImage(widget.task.coverImageUrl!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // 标题卡片
             Container(
               width: double.infinity,

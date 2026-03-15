@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'date_time_picker.dart'; // 导入时间选择器
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
@@ -19,6 +22,10 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
   // 0: 5分钟有效 (默认), 1: 设置有效时间
   int _selectedDurationType = 0;
   
+  // 封面与状态
+  File? _coverImage;
+  bool _isPublishing = false;
+
   // 时间状态管理
   DateTime _startTime = DateTime.now();
   late DateTime _endTime = _startTime.add(const Duration(minutes: 5));
@@ -30,10 +37,68 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
     _budgetController.dispose();
     super.dispose();
   }
+  
+  // 显示图片来源选择弹窗
+  Future<void> _showImageSourceDialog() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('从相册选择'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickAndCropImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('拍照'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickAndCropImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 选择、裁剪封面
+  Future<void> _pickAndCropImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: source);
+      if (pickedFile == null) return;
+
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9), // 采用 16:9 更适合信息流封面
+        maxWidth: 800,
+        maxHeight: 450,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 80,
+        uiSettings: [
+          AndroidUiSettings(toolbarTitle: '裁剪封面', toolbarColor: Colors.blue, toolbarWidgetColor: Colors.white, initAspectRatio: CropAspectRatioPreset.ratio16x9, lockAspectRatio: true),
+          IOSUiSettings(title: '裁剪封面', aspectRatioLockEnabled: true, resetAspectRatioEnabled: false),
+        ],
+      );
+
+      if (croppedFile == null) return;
+      setState(() => _coverImage = File(croppedFile.path));
+    } catch (e) {
+      print("选择封面失败: $e");
+    }
+  }
 
   Future<void> _handlePublish() async {
     const storage = FlutterSecureStorage();
     final userId = await storage.read(key: 'user_id') ?? "user_current";
+    
+    setState(() => _isPublishing = true);
 
     // 1. 将用户输入存储到 Task 类型变量中
     // 注意：部分字段目前 UI 没有对应输入框，使用默认值或随机生成
@@ -57,10 +122,11 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
     );
 
     // 2. 通过 Dio 真实调用 FastAPI
-    await MockAPI.publishTask(newTask);
+    await MockAPI.publishTask(newTask, coverFile: _coverImage);
 
     // 返回首页
     if (mounted) {
+      setState(() => _isPublishing = false);
       Navigator.pop(context);
     }
   }
@@ -83,6 +149,39 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 封面图片区域
+              GestureDetector(
+                onTap: _showImageSourceDialog,
+                child: Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    image: _coverImage != null
+                        ? DecorationImage(image: FileImage(_coverImage!), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: _coverImage == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo, size: 40, color: Colors.grey[400]),
+                            const SizedBox(height: 8),
+                            Text("添加封面图 (选填)", style: TextStyle(color: Colors.grey[500])),
+                          ],
+                        )
+                      : const Align(
+                          alignment: Alignment.topRight,
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: CircleAvatar(backgroundColor: Colors.black54, radius: 16, child: Icon(Icons.edit, size: 16, color: Colors.white)),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // [需求 1] 顶部输入title，输入框高度是1行
               TextField(
                 controller: _titleController,
@@ -205,7 +304,13 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('发布需求', style: TextStyle(fontSize: 16)),
+            child: _isPublishing
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text('发布需求', style: TextStyle(fontSize: 16)),
           ),
         ),
       ),
