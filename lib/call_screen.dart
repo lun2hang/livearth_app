@@ -116,6 +116,14 @@ class _CallScreenState extends State<CallScreen> {
       userAccount: userAccount,
     );
     
+    // 通知后端用户已加入视频通话
+    try {
+      await DioClient().dio.post('/orders/${widget.orderId}/live-join');
+      debugPrint("✅ [API] 调用 live-join 成功");
+    } catch (e) {
+      debugPrint("❌ [API] 调用 live-join 失败: $e");
+    }
+
     if (mounted) {
       setState(() {
         _isReady = true;
@@ -130,6 +138,14 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Future<void> _dispose() async {
+    // 通知后端用户退出视频通话
+    try {
+      await DioClient().dio.post('/orders/${widget.orderId}/live-leave');
+      debugPrint("✅ [API] 调用 live-leave 成功");
+    } catch (e) {
+      debugPrint("❌ [API] 调用 live-leave 失败: $e");
+    }
+
     await _engine.leaveChannel();
     await _engine.release();
   }

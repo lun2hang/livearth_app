@@ -390,9 +390,9 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     final orders = await MockAPI.fetchUserOrders();
-    // 筛选 status == 'created'
+    // 筛选待处理订单：后端生成的订单状态为 'matched'，通话中为 'live_start'
     final pending = orders.where((o) {
-      if (o.status != 'created') return false;
+      if (o.status != 'matched' && o.status != 'live_start') return false;
       
       // 增加本地超时校验：如果当前时间超过开始时间，视为超时，不显示提醒
       if (o.startTime != null) {
@@ -400,7 +400,8 @@ class _MainScreenState extends State<MainScreen> {
           String timeStr = o.startTime!;
           if (!timeStr.endsWith('Z')) timeStr += 'Z'; // 强制视为 UTC
           final startTime = DateTime.parse(timeStr);
-          if (DateTime.now().toUtc().isAfter(startTime)) { // 使用 UTC 进行比较
+          // 增加宽限期（例如2小时），避免订单到达开始时间时入口立刻消失
+          if (DateTime.now().toUtc().isAfter(startTime.add(const Duration(hours: 2)))) { 
             return false;
           }
         } catch (_) {}

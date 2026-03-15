@@ -175,7 +175,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ['created', 'live_start'].contains(widget.order.status)
+      floatingActionButton: ['matched', 'live_start', 'live_end'].contains(widget.order.status)
           ? Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -206,6 +206,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: const Text('进入视频', style: TextStyle(fontSize: 16)),
                   ),
                 ),
+              if (['matched', 'live_start'].contains(widget.order.status)) ...[
                 const SizedBox(width: 20),
                 // 已有的“取消订单”按钮
                 SizedBox(
@@ -223,6 +224,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('取消订单', style: TextStyle(fontSize: 16)),
                   ),
                 ),
+              ],
               ],
             )
           : null,
