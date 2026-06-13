@@ -17,11 +17,22 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _isLoading = false;
   String? _currentUserId;
+  late OrderWithDetails _order = widget.order;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
+    _fetchDetail();
+  }
+
+  Future<void> _fetchDetail() async {
+    final detailedOrder = await MockAPI.fetchOrderDetail(_order.id);
+    if (detailedOrder != null && mounted) {
+      setState(() {
+        _order = detailedOrder;
+      });
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -61,7 +72,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (confirm != true) return;
 
     setState(() => _isLoading = true);
-    final success = await MockAPI.cancelEntry(widget.order.id, 'order');
+    final success = await MockAPI.cancelEntry(_order.id, 'order');
     setState(() => _isLoading = false);
 
     if (mounted) {
@@ -76,9 +87,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isTaskOrder = widget.order.taskId != null;
+    final isTaskOrder = _order.taskId != null;
     final typeLabel = isTaskOrder ? "需求订单" : "供给订单";
-    final relatedId = isTaskOrder ? widget.order.taskId : widget.order.supplyId;
+    final relatedId = isTaskOrder ? _order.taskId : _order.supplyId;
 
     return Scaffold(
       appBar: AppBar(
@@ -106,16 +117,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   Icon(
                     Icons.check_circle_outline,
                     size: 64,
-                    color: widget.order.status == 'completed' ? Colors.green : Colors.blue,
+                    color: _order.status == 'completed' ? Colors.green : Colors.blue,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "订单状态: ${widget.order.status}",
+                    "订单状态: ${_order.status}",
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "¥${widget.order.amount}",
+                    "¥${_order.amount}",
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
                   ),
                 ],
@@ -136,16 +147,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 children: [
                   const Text("基本信息", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const Divider(height: 24),
-                  _buildInfoRow("订单编号", "#${widget.order.id}"),
+                  _buildInfoRow("订单编号", "#${_order.id}"),
                   const SizedBox(height: 12),
                   _buildInfoRow("订单类型", typeLabel),
                   const SizedBox(height: 12),
                   _buildInfoRow("关联ID", "#$relatedId"),
                   const SizedBox(height: 12),
-                  _buildInfoRow("创建时间", _formatTime(widget.order.createdAt)),
-                  if (widget.order.startTime != null) ...[
+                  _buildInfoRow("创建时间", _formatTime(_order.createdAt)),
+                  if (_order.startTime != null) ...[
                     const SizedBox(height: 12),
-                    _buildInfoRow("开始时间", _formatTime(widget.order.startTime!)),
+                    _buildInfoRow("开始时间", _formatTime(_order.startTime!)),
                   ],
                 ],
               ),
@@ -165,9 +176,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 children: [
                   const Text("交易方信息", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const Divider(height: 24),
-                  _buildUserRow("消费者", widget.order.consumer),
+                  _buildUserRow("消费者", _order.consumer),
                   const SizedBox(height: 12),
-                  _buildUserRow("供给者", widget.order.provider),
+                  _buildUserRow("供给者", _order.provider),
                 ],
               ),
             ),
@@ -175,7 +186,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ['matched', 'live_start', 'live_end'].contains(widget.order.status)
+      floatingActionButton: ['matched', 'live_start', 'live_end'].contains(_order.status)
           ? Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -188,8 +199,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => CallScreen(
-                            orderId: widget.order.id,
-                            isProvider: widget.order.provider.id == _currentUserId,
+                            orderId: _order.id,
+                            isProvider: _order.provider.id == _currentUserId,
                           ),
                         ),
                       );
@@ -206,7 +217,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: const Text('进入视频', style: TextStyle(fontSize: 16)),
                   ),
                 ),
-              if (['matched', 'live_start'].contains(widget.order.status)) ...[
+              if (['matched', 'live_start'].contains(_order.status)) ...[
                 const SizedBox(width: 20),
                 // 已有的“取消订单”按钮
                 SizedBox(
@@ -265,7 +276,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             icon: ValueListenableBuilder<Map<String, int>>(
               valueListenable: RtmManager().unreadCountsNotifier,
               builder: (context, counts, child) {
-                final count = counts[widget.order.id.toString()] ?? 0;
+                final count = counts[_order.id.toString()] ?? 0;
                 return Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -286,7 +297,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChatScreen(
-                      orderId: widget.order.id,
+                      orderId: _order.id,
                       currentUserId: _currentUserId!,
                       otherUserName: user.nickname ?? user.username,
                       otherUserId: user.id,

@@ -15,11 +15,23 @@ class TaskDetailScreen extends StatefulWidget {
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool _isOwner = false;
   bool _isLoading = false;
+  late Task _task = widget.task;
 
   @override
   void initState() {
     super.initState();
     _checkOwner();
+    _fetchDetail();
+  }
+
+  Future<void> _fetchDetail() async {
+    final detailedTask = await MockAPI.fetchTaskDetail(_task.id);
+    if (detailedTask != null && mounted) {
+      setState(() {
+        _task = detailedTask;
+      });
+      _checkOwner();
+    }
   }
 
   Future<void> _checkOwner() async {
@@ -27,7 +39,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final currentUserId = await storage.read(key: 'user_id');
     if (mounted && currentUserId != null) {
       setState(() {
-        _isOwner = currentUserId == widget.task.userId;
+        _isOwner = currentUserId == _task.userId;
       });
     }
   }
@@ -63,7 +75,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     if (confirm != true) return;
 
     setState(() => _isLoading = true);
-    final success = await MockAPI.cancelEntry(widget.task.id, 'task');
+    final success = await MockAPI.cancelEntry(_task.id, 'task');
     setState(() => _isLoading = false);
 
     if (mounted) {
@@ -92,7 +104,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 封面图展示
-            if (widget.task.coverImageUrl != null && widget.task.coverImageUrl!.isNotEmpty) ...[
+            if (_task.coverImageUrl != null && _task.coverImageUrl!.isNotEmpty) ...[
               Container(
                 width: double.infinity,
                 height: 240,
@@ -100,7 +112,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
                   image: DecorationImage(
-                    image: NetworkImage(widget.task.coverImageUrl!),
+                    image: NetworkImage(_task.coverImageUrl!),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -120,7 +132,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.task.title,
+                    _task.title,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -134,18 +146,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircleAvatar(
-                            backgroundImage: widget.task.avatar != null && widget.task.avatar!.isNotEmpty
-                                ? NetworkImage(widget.task.avatar!)
+                            backgroundImage: _task.avatar != null && _task.avatar!.isNotEmpty
+                                ? NetworkImage(_task.avatar!)
                                 : null,
                             radius: 12,
                             backgroundColor: Colors.grey[200],
-                            child: widget.task.avatar == null || widget.task.avatar!.isEmpty
+                            child: _task.avatar == null || _task.avatar!.isEmpty
                                 ? const Icon(Icons.person, size: 16, color: Colors.grey)
                                 : null,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            widget.task.nickname ?? "匿名用户",
+                            _task.nickname ?? "匿名用户",
                             style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                           ),
                         ],
@@ -157,12 +169,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          "¥${widget.task.budget}",
+                          "¥${_task.budget}",
                           style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Text(
-                        widget.task.status,
+                        _task.status,
                         style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
                       ),
                     ],
@@ -186,12 +198,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   const Text("需求描述", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
-                    widget.task.description?.isNotEmpty == true ? widget.task.description! : "暂无描述",
+                    _task.description?.isNotEmpty == true ? _task.description! : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    "位置: ${widget.task.lat.toStringAsFixed(4)}, ${widget.task.lng.toStringAsFixed(4)}",
+                    "位置: ${_task.lat.toStringAsFixed(4)}, ${_task.lng.toStringAsFixed(4)}",
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
@@ -209,11 +221,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow(Icons.lightbulb_outline, "ID", "${widget.task.id}"),
+                  _buildInfoRow(Icons.lightbulb_outline, "ID", "${_task.id}"),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(widget.task.createdAt)),
+                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(_task.createdAt)),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(widget.task.validFrom)}\n至 ${_formatTime(widget.task.validTo)}"),
+                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(_task.validFrom)}\n至 ${_formatTime(_task.validTo)}"),
                 ],
               ),
             ),
@@ -234,7 +246,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Widget? _buildOwnerFab() {
-    if (['created', 'matched'].contains(widget.task.status)) {
+    if (['created', 'matched'].contains(_task.status)) {
       return SizedBox(
         width: MediaQuery.of(context).size.width / 3,
         child: ElevatedButton(
@@ -257,7 +269,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Widget _buildProviderButton() {
     return ElevatedButton(
       onPressed: () async {
-        final success = await MockAPI.acceptTask(widget.task.id);
+        final success = await MockAPI.acceptTask(_task.id);
         if (mounted) {
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('接单成功！')));

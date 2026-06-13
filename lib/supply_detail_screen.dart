@@ -15,11 +15,23 @@ class SupplyDetailScreen extends StatefulWidget {
 class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
   bool _isOwner = false;
   bool _isLoading = false;
+  late Supply _supply = widget.supply;
 
   @override
   void initState() {
     super.initState();
     _checkOwner();
+    _fetchDetail();
+  }
+
+  Future<void> _fetchDetail() async {
+    final detailedSupply = await MockAPI.fetchSupplyDetail(_supply.id);
+    if (detailedSupply != null && mounted) {
+      setState(() {
+        _supply = detailedSupply;
+      });
+      _checkOwner();
+    }
   }
 
   Future<void> _checkOwner() async {
@@ -27,7 +39,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
     final currentUserId = await storage.read(key: 'user_id');
     if (mounted && currentUserId != null) {
       setState(() {
-        _isOwner = currentUserId == widget.supply.userId;
+        _isOwner = currentUserId == _supply.userId;
       });
     }
   }
@@ -63,7 +75,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
     if (confirm != true) return;
 
     setState(() => _isLoading = true);
-    final success = await MockAPI.cancelEntry(widget.supply.id, 'supply');
+    final success = await MockAPI.cancelEntry(_supply.id, 'supply');
     setState(() => _isLoading = false);
 
     if (mounted) {
@@ -92,7 +104,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 视频/封面图占位
-            if (widget.supply.coverImageUrl != null && widget.supply.coverImageUrl!.isNotEmpty) ...[
+            if (_supply.coverImageUrl != null && _supply.coverImageUrl!.isNotEmpty) ...[
               Container(
                 width: double.infinity,
                 height: 240,
@@ -100,7 +112,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
                   image: DecorationImage(
-                    image: NetworkImage(widget.supply.coverImageUrl!),
+                    image: NetworkImage(_supply.coverImageUrl!),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -120,7 +132,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.supply.title,
+                    _supply.title,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -134,18 +146,18 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircleAvatar(
-                            backgroundImage: widget.supply.avatar != null && widget.supply.avatar!.isNotEmpty
-                                ? NetworkImage(widget.supply.avatar!)
+                            backgroundImage: _supply.avatar != null && _supply.avatar!.isNotEmpty
+                                ? NetworkImage(_supply.avatar!)
                                 : null,
                             radius: 12,
                             backgroundColor: Colors.grey[200],
-                            child: widget.supply.avatar == null || widget.supply.avatar!.isEmpty
+                            child: _supply.avatar == null || _supply.avatar!.isEmpty
                                 ? const Icon(Icons.person, size: 16, color: Colors.grey)
                                 : null,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            widget.supply.nickname ?? "匿名用户",
+                            _supply.nickname ?? "匿名用户",
                             style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                           ),
                         ],
@@ -156,7 +168,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                           const Icon(Icons.star, color: Colors.orange, size: 18),
                           const SizedBox(width: 4),
                           Text(
-                            "${widget.supply.rating}",
+                            "${_supply.rating}",
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
                           ),
                         ],
@@ -168,12 +180,12 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          "¥${widget.supply.price}",
+                          "¥${_supply.price}",
                           style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Text(
-                        widget.supply.status,
+                        _supply.status,
                         style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
                       ),
                     ],
@@ -197,12 +209,12 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                   const Text("供给描述", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
-                    widget.supply.description.isNotEmpty ? widget.supply.description : "暂无描述",
+                    _supply.description.isNotEmpty ? _supply.description : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    "位置: ${widget.supply.lat.toStringAsFixed(4)}, ${widget.supply.lng.toStringAsFixed(4)}",
+                    "位置: ${_supply.lat.toStringAsFixed(4)}, ${_supply.lng.toStringAsFixed(4)}",
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
@@ -220,11 +232,11 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow(Icons.camera_roll_outlined, "ID", "${widget.supply.id}"),
+                  _buildInfoRow(Icons.camera_roll_outlined, "ID", "${_supply.id}"),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(widget.supply.createdAt)),
+                  _buildInfoRow(Icons.access_time, "发布时间", _formatTime(_supply.createdAt)),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(widget.supply.validFrom)}\n至 ${_formatTime(widget.supply.validTo)}"),
+                  _buildInfoRow(Icons.timer_outlined, "有效期", "${_formatTime(_supply.validFrom)}\n至 ${_formatTime(_supply.validTo)}"),
                 ],
               ),
             ),
@@ -245,7 +257,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
   }
 
   Widget? _buildOwnerFab() {
-    if (['created', 'matched'].contains(widget.supply.status)) {
+    if (['created', 'matched'].contains(_supply.status)) {
       return SizedBox(
         width: MediaQuery.of(context).size.width / 3,
         child: ElevatedButton(
@@ -268,7 +280,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
   Widget _buildConsumerButton() {
     return ElevatedButton(
       onPressed: () async {
-        final success = await MockAPI.bookSupply(widget.supply.id);
+        final success = await MockAPI.bookSupply(_supply.id);
         if (mounted) {
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('预订成功！')));

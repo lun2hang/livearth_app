@@ -155,6 +155,42 @@ class MockAPI {
     }
   }
 
+  // 获取单个需求详情
+  static Future<Task?> fetchTaskDetail(int taskId) async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/task/$taskId');
+      return Task.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 获取需求详情失败 -> $e");
+      return null;
+    }
+  }
+
+  // 获取单个供给详情
+  static Future<Supply?> fetchSupplyDetail(int supplyId) async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/supply/$supplyId');
+      return Supply.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 获取供给详情失败 -> $e");
+      return null;
+    }
+  }
+
+  // 获取单个订单详情
+  static Future<OrderWithDetails?> fetchOrderDetail(int orderId) async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/orders/$orderId');
+      return OrderWithDetails.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 获取订单详情失败 -> $e");
+      return null;
+    }
+  }
+
   // 获取当前用户的发布需求历史 (Task)
   static Future<List<Task>> fetchUserTasks() async {
     final dio = DioClient().dio;
