@@ -5,6 +5,10 @@ class Supply {
   final String description;
   final double lat;
   final double lng;
+  final String? addressText;
+  final String? placeId;
+  final String? formattedAddress;
+  final double? distanceKm;
   final double rating;
   final double price;
   final String status;
@@ -22,6 +26,10 @@ class Supply {
     required this.description,
     required this.lat,
     required this.lng,
+    this.addressText,
+    this.placeId,
+    this.formattedAddress,
+    this.distanceKm,
     required this.rating,
     required this.price,
     required this.status,
@@ -41,6 +49,10 @@ class Supply {
       description: json['description'] as String,
       lat: (json['lat'] as num).toDouble(),
       lng: (json['lng'] as num).toDouble(),
+      addressText: json['address_text'] as String?,
+      placeId: json['place_id'] as String?,
+      formattedAddress: json['formatted_address'] as String?,
+      distanceKm: (json['distance_km'] as num?)?.toDouble(),
       rating: (json['rating'] as num).toDouble(),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] as String? ?? 'active',
@@ -61,6 +73,9 @@ class Supply {
       'description': description,
       'lat': lat,
       'lng': lng,
+      'address_text': addressText,
+      'place_id': placeId,
+      'formatted_address': formattedAddress,
       'rating': rating,
       'price': price,
       'status': status,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geocoding/geocoding.dart';
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
 
@@ -16,12 +17,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool _isOwner = false;
   bool _isLoading = false;
   late Task _task = widget.task;
+  String _displayAddress = '';
 
   @override
   void initState() {
     super.initState();
     _checkOwner();
     _fetchDetail();
+    _resolveAddress();
   }
 
   Future<void> _fetchDetail() async {
@@ -31,6 +34,67 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         _task = detailedTask;
       });
       _checkOwner();
+      _resolveAddress();
+    }
+  }
+
+  Future<void> _resolveAddress() async {
+    // 优先使用格式化地址或选定地址名
+    if (_task.formattedAddress != null && _task.formattedAddress!.isNotEmpty) {
+      if (_task.addressText != null &&
+          _task.addressText!.isNotEmpty &&
+          _task.addressText != _task.formattedAddress) {
+        if (mounted) {
+          setState(() {
+            _displayAddress = "${_task.addressText}, ${_task.formattedAddress}";
+          });
+        }
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _displayAddress = _task.formattedAddress!;
+        });
+      }
+      return;
+    }
+
+    if (_task.addressText != null && _task.addressText!.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _displayAddress = _task.addressText!;
+        });
+      }
+      return;
+    }
+
+    // 如果未存文字，则动态对经纬度进行逆地理编码，拼装为美式地址顺序：[地名/街道], [城市], [州/省], [国家]
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(_task.lat, _task.lng);
+      if (placemarks.isNotEmpty && mounted) {
+        final p = placemarks.first;
+        final parts = [
+          p.name ?? p.street, // 地名/街道
+          p.locality ?? p.subLocality, // 城市
+          p.administrativeArea, // 州/省
+          p.country, // 国家
+        ].where((e) => e != null && e.isNotEmpty).toList();
+
+        if (parts.isNotEmpty) {
+          setState(() {
+            _displayAddress = parts.join(', ');
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      print("解析地址失败: $e");
+    }
+
+    if (mounted) {
+      setState(() {
+        _displayAddress = "位置坐标: ${_task.lat.toStringAsFixed(4)}, ${_task.lng.toStringAsFixed(4)}";
+      });
     }
   }
 
@@ -136,6 +200,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
+                  // 位置信息 (位于标题正下方，全页唯一)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 16, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _displayAddress.isNotEmpty ? _displayAddress : "正在解析位置...",
+                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        ),
+                      ),
+                      if (_task.distanceKm != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          "${_task.distanceKm} km",
+                          style: const TextStyle(fontSize: 13, color: Colors.blue, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 16,
                     runSpacing: 8,
@@ -201,17 +287,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     _task.description?.isNotEmpty == true ? _task.description! : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "位置: ${_task.lat.toStringAsFixed(4)}, ${_task.lng.toStringAsFixed(4)}",
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // 其他信息 (时间、地点)
+            // 其他信息 (时间、ID)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),

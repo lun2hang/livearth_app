@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geocoding/geocoding.dart';
 import 'models/supply.dart';
 import 'main.dart'; // 导入 MockAPI
 
@@ -16,12 +17,14 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
   bool _isOwner = false;
   bool _isLoading = false;
   late Supply _supply = widget.supply;
+  String _displayAddress = '';
 
   @override
   void initState() {
     super.initState();
     _checkOwner();
     _fetchDetail();
+    _resolveAddress();
   }
 
   Future<void> _fetchDetail() async {
@@ -31,6 +34,67 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
         _supply = detailedSupply;
       });
       _checkOwner();
+      _resolveAddress();
+    }
+  }
+
+  Future<void> _resolveAddress() async {
+    // 优先使用格式化地址或选定地址名
+    if (_supply.formattedAddress != null && _supply.formattedAddress!.isNotEmpty) {
+      if (_supply.addressText != null &&
+          _supply.addressText!.isNotEmpty &&
+          _supply.addressText != _supply.formattedAddress) {
+        if (mounted) {
+          setState(() {
+            _displayAddress = "${_supply.addressText}, ${_supply.formattedAddress}";
+          });
+        }
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _displayAddress = _supply.formattedAddress!;
+        });
+      }
+      return;
+    }
+
+    if (_supply.addressText != null && _supply.addressText!.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _displayAddress = _supply.addressText!;
+        });
+      }
+      return;
+    }
+
+    // 如果未存文字，则动态对经纬度进行逆地理编码，拼装为美式地址顺序：[地名/街道], [城市], [州/省], [国家]
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(_supply.lat, _supply.lng);
+      if (placemarks.isNotEmpty && mounted) {
+        final p = placemarks.first;
+        final parts = [
+          p.name ?? p.street, // 地名/街道
+          p.locality ?? p.subLocality, // 城市
+          p.administrativeArea, // 州/省
+          p.country, // 国家
+        ].where((e) => e != null && e.isNotEmpty).toList();
+
+        if (parts.isNotEmpty) {
+          setState(() {
+            _displayAddress = parts.join(', ');
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      print("解析地址失败: $e");
+    }
+
+    if (mounted) {
+      setState(() {
+        _displayAddress = "位置坐标: ${_supply.lat.toStringAsFixed(4)}, ${_supply.lng.toStringAsFixed(4)}";
+      });
     }
   }
 
@@ -136,6 +200,28 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
+                  // 位置信息 (位于标题正下方，全页唯一)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 16, color: Colors.orange),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _displayAddress.isNotEmpty ? _displayAddress : "正在解析位置...",
+                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        ),
+                      ),
+                      if (_supply.distanceKm != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          "${_supply.distanceKm} km",
+                          style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 12,
                     runSpacing: 8,
@@ -211,11 +297,6 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
                   Text(
                     _supply.description.isNotEmpty ? _supply.description : "暂无描述",
                     style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "位置: ${_supply.lat.toStringAsFixed(4)}, ${_supply.lng.toStringAsFixed(4)}",
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),

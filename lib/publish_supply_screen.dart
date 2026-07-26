@@ -5,6 +5,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'date_time_picker.dart'; // 导入时间选择器
 import 'models/supply.dart';
 import 'main.dart'; // 导入 MockAPI
+import 'location_picker_screen.dart'; // 导入地点选择器
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PublishSupplyScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
   // 封面与状态
   File? _coverImage;
   bool _isPublishing = false;
+  SelectedLocation? _selectedLocation;
 
   // 时间状态管理
   DateTime _startTime = DateTime.now();
@@ -106,8 +108,11 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
       userId: userId,
       title: _titleController.text.isEmpty ? "未命名供给" : _titleController.text,
       description: _bodyController.text,
-      lat: 35.6595, // 默认经纬度 (东京)
-      lng: 139.7005,
+      lat: _selectedLocation?.lat ?? 35.6595, // 默认或地图选中经纬度
+      lng: _selectedLocation?.lng ?? 139.7005,
+      addressText: _selectedLocation?.addressText,
+      placeId: _selectedLocation?.placeId,
+      formattedAddress: _selectedLocation?.formattedAddress,
       rating: 5.0, // 初始评分
       price: double.tryParse(_priceController.text) ?? 0.0,
       status: "active",
@@ -194,37 +199,78 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
               ),
               const Divider(),
 
-              // 价格输入
-              TextField(
-                controller: _priceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 16),
-                decoration: const InputDecoration(
-                  hintText: '设置价格 (¥)',
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.attach_money, color: Colors.orange),
+              // 价格输入 (左对齐，去除货币符号)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.attach_money, color: Colors.orange[600]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _priceController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(fontSize: 16),
+                        decoration: const InputDecoration(
+                          hintText: '设置价格',
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8.0),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Divider(),
 
-              // POI 选择
+              // POI 地点选择
               InkWell(
-                onTap: () {
-                  print("UI交互: 点击选择POI (未来接入Google Maps)");
+                onTap: () async {
+                  final result = await Navigator.push<SelectedLocation>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LocationPickerScreen(
+                        initialLat: _selectedLocation?.lat,
+                        initialLng: _selectedLocation?.lng,
+                      ),
+                    ),
+                  );
+                  if (result != null) {
+                    setState(() {
+                      _selectedLocation = result;
+                    });
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                   child: Row(
                     children: [
-                      Icon(Icons.location_on_outlined, color: Colors.orange[600]), // 橙色图标
+                      Icon(Icons.location_on, color: Colors.orange[600]), // 橙色图标
                       const SizedBox(width: 8),
-                      const Text(
-                        "添加地点",
-                        style: TextStyle(fontSize: 16, color: Colors.black87),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedLocation?.addressText ?? "添加地点",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: _selectedLocation != null ? FontWeight.bold : FontWeight.normal,
+                                color: _selectedLocation != null ? Colors.black : Colors.black87,
+                              ),
+                            ),
+                            if (_selectedLocation != null)
+                              Text(
+                                _selectedLocation!.formattedAddress ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
-                      const Icon(Icons.arrow_forward_ios,
-                          size: 16, color: Colors.grey),
+                      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                     ],
                   ),
                 ),

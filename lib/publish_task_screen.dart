@@ -5,6 +5,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'date_time_picker.dart'; // 导入时间选择器
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
+import 'location_picker_screen.dart'; // 导入地点选择器
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PublishTaskScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
   // 封面与状态
   File? _coverImage;
   bool _isPublishing = false;
+  SelectedLocation? _selectedLocation;
 
   // 时间状态管理
   DateTime _startTime = DateTime.now();
@@ -101,14 +103,16 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
     setState(() => _isPublishing = true);
 
     // 1. 将用户输入存储到 Task 类型变量中
-    // 注意：部分字段目前 UI 没有对应输入框，使用默认值或随机生成
     final newTask = Task(
       id: DateTime.now().millisecondsSinceEpoch, // 临时生成唯一ID
       userId: userId,
       title: _titleController.text.isEmpty ? "未命名需求" : _titleController.text,
       description: _bodyController.text,
-      lat: 35.6595, // 默认经纬度 (东京)
-      lng: 139.7005,
+      lat: _selectedLocation?.lat ?? 35.6595, // 默认或地图选中经纬度
+      lng: _selectedLocation?.lng ?? 139.7005,
+      addressText: _selectedLocation?.addressText,
+      placeId: _selectedLocation?.placeId,
+      formattedAddress: _selectedLocation?.formattedAddress,
       budget: double.tryParse(_budgetController.text) ?? 0.0,
       status: "pending",
       createdAt: DateTime.now().toUtc().toIso8601String(),
@@ -194,37 +198,78 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
               ),
               const Divider(),
 
-              // 预算输入
-              TextField(
-                controller: _budgetController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 16),
-                decoration: const InputDecoration(
-                  hintText: '设置预算 (¥)',
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.attach_money, color: Colors.blue),
+              // 预算输入 (左对齐，去除货币符号)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.attach_money, color: Colors.blue[600]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _budgetController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(fontSize: 16),
+                        decoration: const InputDecoration(
+                          hintText: '设置预算',
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8.0),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Divider(),
 
-              // [需求 2] POI 选择 (目前仅留UI，点击print)
+              // [需求 2] POI 地点选择
               InkWell(
-                onTap: () {
-                  print("UI交互: 点击选择POI (未来接入Google Maps)");
+                onTap: () async {
+                  final result = await Navigator.push<SelectedLocation>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LocationPickerScreen(
+                        initialLat: _selectedLocation?.lat,
+                        initialLng: _selectedLocation?.lng,
+                      ),
+                    ),
+                  );
+                  if (result != null) {
+                    setState(() {
+                      _selectedLocation = result;
+                    });
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                   child: Row(
                     children: [
-                      Icon(Icons.location_on_outlined, color: Colors.blue[600]),
+                      Icon(Icons.location_on, color: Colors.blue[600]),
                       const SizedBox(width: 8),
-                      const Text(
-                        "添加地点",
-                        style: TextStyle(fontSize: 16, color: Colors.black87),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedLocation?.addressText ?? "添加地点",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: _selectedLocation != null ? FontWeight.bold : FontWeight.normal,
+                                color: _selectedLocation != null ? Colors.black : Colors.black87,
+                              ),
+                            ),
+                            if (_selectedLocation != null)
+                              Text(
+                                _selectedLocation!.formattedAddress ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
-                      const Icon(Icons.arrow_forward_ios,
-                          size: 16, color: Colors.grey),
+                      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                     ],
                   ),
                 ),

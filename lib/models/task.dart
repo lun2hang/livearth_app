@@ -5,6 +5,10 @@ class Task {
   final String? description;
   final double lat;
   final double lng;
+  final String? addressText;
+  final String? placeId;
+  final String? formattedAddress;
+  final double? distanceKm;
   final double budget;
   final String status;
   final String createdAt;
@@ -21,6 +25,10 @@ class Task {
     this.description,
     required this.lat,
     required this.lng,
+    this.addressText,
+    this.placeId,
+    this.formattedAddress,
+    this.distanceKm,
     required this.budget,
     required this.status,
     required this.createdAt,
@@ -39,6 +47,10 @@ class Task {
       description: json['description'] as String?,
       lat: (json['lat'] as num).toDouble(),
       lng: (json['lng'] as num).toDouble(),
+      addressText: json['address_text'] as String?,
+      placeId: json['place_id'] as String?,
+      formattedAddress: json['formatted_address'] as String?,
+      distanceKm: (json['distance_km'] as num?)?.toDouble(),
       budget: (json['budget'] as num).toDouble(),
       status: json['status'] as String,
       createdAt: json['created_at'] as String,
@@ -58,6 +70,9 @@ class Task {
       'description': description,
       'lat': lat,
       'lng': lng,
+      'address_text': addressText,
+      'place_id': placeId,
+      'formatted_address': formattedAddress,
       'budget': budget,
       'status': status,
       'created_at': createdAt,
