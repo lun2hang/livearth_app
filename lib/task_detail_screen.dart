@@ -281,7 +281,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("需求描述", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text("详情", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     _task.description?.isNotEmpty == true ? _task.description! : "暂无描述",

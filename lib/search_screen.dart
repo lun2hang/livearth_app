@@ -221,8 +221,16 @@ class _SearchScreenState extends State<SearchScreen> {
                             const Icon(Icons.star, size: 12, color: Colors.amber),
                             Text("${item.rating}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(width: 8),
-                            Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
-                            Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            Icon(Icons.location_on, size: 12, color: Colors.blue),
+                            const SizedBox(width: 2),
+                            Text(
+                              item.distanceKm != null
+                                  ? (item.distanceKm! < 1.0
+                                      ? "${(item.distanceKm! * 1000).round()}m"
+                                      : "${item.distanceKm!.toStringAsFixed(1)}km")
+                                  : (item.addressText ?? "附近"),
+                              style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w500),
+                            ),
                             const Spacer(),
                             Text("刚刚", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                           ],
@@ -313,8 +321,16 @@ class _SearchScreenState extends State<SearchScreen> {
                             Text("${item.budget}", style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
                             // 距离
-                            Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
-                            Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            Icon(Icons.location_on, size: 12, color: Colors.blue),
+                            const SizedBox(width: 2),
+                            Text(
+                              item.distanceKm != null
+                                  ? (item.distanceKm! < 1.0
+                                      ? "${(item.distanceKm! * 1000).round()}m"
+                                      : "${item.distanceKm!.toStringAsFixed(1)}km")
+                                  : (item.addressText ?? "附近"),
+                              style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w500),
+                            ),
                             const Spacer(),
                             // 时间
                             Text("刚刚", style: TextStyle(fontSize: 12, color: Colors.grey[400])),

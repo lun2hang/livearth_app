@@ -28,22 +28,41 @@ void main() {
 // 已替换为真实网络请求 (FastAPI)
 // ---------------------------------------------------------------------------
 class MockAPI {
+  // 获取用户定位参数 (lat, lng) 供后端计算真实距离
+  static Future<Map<String, dynamic>> _getUserLocationParams() async {
+    const storage = FlutterSecureStorage();
+    String? lat = await storage.read(key: 'latitude');
+    String? lng = await storage.read(key: 'longitude');
+
+    if (lat == null || lng == null) {
+      try {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
+          Position pos = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.medium,
+            timeLimit: const Duration(seconds: 2),
+          );
+          lat = pos.latitude.toString();
+          lng = pos.longitude.toString();
+          await storage.write(key: 'latitude', value: lat);
+          await storage.write(key: 'longitude', value: lng);
+        }
+      } catch (_) {}
+    }
+
+    if (lat != null && lng != null) {
+      return {'user_lat': lat, 'user_lng': lng};
+    }
+    return {};
+  }
+
   // 获取任务/供给列表
   static Future<List<dynamic>> fetchFeedItems({required bool isConsumer}) async {
     final dio = DioClient().dio;
     
     final Map<String, dynamic> queryParams = {'is_consumer': isConsumer};
-
-    // 如果是供给者模式，尝试获取并传递经纬度
-    if (!isConsumer) {
-      const storage = FlutterSecureStorage();
-      final lat = await storage.read(key: 'latitude');
-      final lng = await storage.read(key: 'longitude');
-      if (lat != null && lng != null) {
-        queryParams['user_lat'] = lat;
-        queryParams['user_lng'] = lng;
-      }
-    }
+    final locParams = await _getUserLocationParams();
+    queryParams.addAll(locParams);
 
     try {
       // 统一调用 /feed 接口，通过 query 参数区分角色
@@ -124,17 +143,8 @@ class MockAPI {
       'q': query,
       'is_consumer': isConsumer,
     };
-
-    // 如果是供给者模式，尝试获取并传递经纬度
-    if (!isConsumer) {
-      const storage = FlutterSecureStorage();
-      final lat = await storage.read(key: 'latitude');
-      final lng = await storage.read(key: 'longitude');
-      if (lat != null && lng != null) {
-        queryParams['user_lat'] = lat;
-        queryParams['user_lng'] = lng;
-      }
-    }
+    final locParams = await _getUserLocationParams();
+    queryParams.addAll(locParams);
 
     try {
       final response = await dio.get(
@@ -158,8 +168,9 @@ class MockAPI {
   // 获取单个需求详情
   static Future<Task?> fetchTaskDetail(int taskId) async {
     final dio = DioClient().dio;
+    final locParams = await _getUserLocationParams();
     try {
-      final response = await dio.get('/task/$taskId');
+      final response = await dio.get('/task/$taskId', queryParameters: locParams);
       return Task.fromJson(response.data);
     } catch (e) {
       print("API调用: 获取需求详情失败 -> $e");
@@ -170,8 +181,9 @@ class MockAPI {
   // 获取单个供给详情
   static Future<Supply?> fetchSupplyDetail(int supplyId) async {
     final dio = DioClient().dio;
+    final locParams = await _getUserLocationParams();
     try {
-      final response = await dio.get('/supply/$supplyId');
+      final response = await dio.get('/supply/$supplyId', queryParameters: locParams);
       return Supply.fromJson(response.data);
     } catch (e) {
       print("API调用: 获取供给详情失败 -> $e");
@@ -804,8 +816,16 @@ class _MainScreenState extends State<MainScreen> {
                               Text("${item.rating}", style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                               const SizedBox(width: 8),
                               // 距离
-                              Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
-                              Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              Icon(Icons.location_on, size: 12, color: Colors.blue),
+                              const SizedBox(width: 2),
+                              Text(
+                                item.distanceKm != null
+                                    ? (item.distanceKm! < 1.0
+                                        ? "${(item.distanceKm! * 1000).round()}m"
+                                        : "${item.distanceKm!.toStringAsFixed(1)}km")
+                                    : (item.addressText ?? "附近"),
+                                style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w500),
+                              ),
                               const Spacer(),
                               // 时间
                               Text("刚刚", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
@@ -903,8 +923,16 @@ class _MainScreenState extends State<MainScreen> {
                               Text("${item.budget}", style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
                               const SizedBox(width: 8),
                               // 距离
-                              Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
-                              Text("500m", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              Icon(Icons.location_on, size: 12, color: Colors.blue),
+                              const SizedBox(width: 2),
+                              Text(
+                                item.distanceKm != null
+                                    ? (item.distanceKm! < 1.0
+                                        ? "${(item.distanceKm! * 1000).round()}m"
+                                        : "${item.distanceKm!.toStringAsFixed(1)}km")
+                                    : (item.addressText ?? "附近"),
+                                style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w500),
+                              ),
                               const Spacer(),
                               // 时间
                               Text("刚刚", style: TextStyle(fontSize: 12, color: Colors.grey[400])),

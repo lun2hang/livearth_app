@@ -190,8 +190,9 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
               TextField(
                 controller: _titleController,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
-                  hintText: '填写标题',
+                decoration: InputDecoration(
+                  hintText: '想看什么？',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.normal),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -210,11 +211,12 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
                         controller: _budgetController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         style: const TextStyle(fontSize: 16),
-                        decoration: const InputDecoration(
-                          hintText: '设置预算',
+                        decoration: InputDecoration(
+                          hintText: '悬赏预算',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 8.0),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8.0),
                         ),
                       ),
                     ),
@@ -256,7 +258,7 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: _selectedLocation != null ? FontWeight.bold : FontWeight.normal,
-                                color: _selectedLocation != null ? Colors.black : Colors.black87,
+                                color: _selectedLocation != null ? Colors.black : Colors.grey[400],
                               ),
                             ),
                             if (_selectedLocation != null)
@@ -326,8 +328,9 @@ class _PublishTaskScreenState extends State<PublishTaskScreen> {
                 controller: _bodyController,
                 maxLines: 5,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  hintText: '添加更多描述...',
+                decoration: InputDecoration(
+                  hintText: '补充现场细节或具体要求...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
                   border: InputBorder.none,
                 ),
               ),

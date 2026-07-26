@@ -191,8 +191,9 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
               TextField(
                 controller: _titleController,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
-                  hintText: '填写供给标题',
+                decoration: InputDecoration(
+                  hintText: '你能播什么？',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.normal),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -211,11 +212,12 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
                         controller: _priceController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         style: const TextStyle(fontSize: 16),
-                        decoration: const InputDecoration(
-                          hintText: '设置价格',
+                        decoration: InputDecoration(
+                          hintText: '服务价格',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 8.0),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8.0),
                         ),
                       ),
                     ),
@@ -257,7 +259,7 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: _selectedLocation != null ? FontWeight.bold : FontWeight.normal,
-                                color: _selectedLocation != null ? Colors.black : Colors.black87,
+                                color: _selectedLocation != null ? Colors.black : Colors.grey[400],
                               ),
                             ),
                             if (_selectedLocation != null)
@@ -327,8 +329,9 @@ class _PublishSupplyScreenState extends State<PublishSupplyScreen> {
                 controller: _bodyController,
                 maxLines: 5,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  hintText: '描述您的供给服务...',
+                decoration: InputDecoration(
+                  hintText: '补充直播视角或服务细节...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
                   border: InputBorder.none,
                 ),
               ),

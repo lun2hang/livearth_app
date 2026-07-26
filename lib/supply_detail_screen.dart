@@ -292,7 +292,7 @@ class _SupplyDetailScreenState extends State<SupplyDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("供给描述", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text("详情", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     _supply.description.isNotEmpty ? _supply.description : "暂无描述",
