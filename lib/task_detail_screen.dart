@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geocoding/geocoding.dart';
 import 'user_profile_screen.dart'; // 导入用户Profile视图
+import 'stripe_wallet_screen.dart'; // 导入 Stripe 支付与收款设置
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
 
@@ -365,6 +366,36 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Widget _buildProviderButton() {
     return ElevatedButton(
       onPressed: () async {
+        // 先检查当前供给者的 Stripe Connect 收款账户绑定状态
+        final stripeStatus = await MockAPI.fetchStripeStatus();
+        if (mounted && stripeStatus != null && !stripeStatus.stripeConnectOnboarded) {
+          final goOnboard = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('需要设置收款账户'),
+              content: const Text('根据合规要求，接单前请先设置您的 Stripe Connect 收款账户，以确保服务完成后能正常接收转账。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('稍后再说'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                  child: const Text('去设置收款账户'),
+                ),
+              ],
+            ),
+          );
+          if (goOnboard == true && mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StripeWalletScreen()),
+            );
+          }
+          return;
+        }
+
         final success = await MockAPI.acceptTask(_task.id);
         if (mounted) {
           if (success) {

@@ -13,6 +13,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
 import 'history_screen.dart'; // 导入历史记录页面
 import 'user_profile_screen.dart'; // 导入用户Profile页面
+import 'stripe_wallet_screen.dart'; // 导入 Stripe 支付与收款设置页面
 import 'main.dart'; // 导入 MockAPI
 import 'order_list_screen.dart'; // 导入订单列表页面
 import 'chat_screen.dart'; // 导入 RtmManager
@@ -670,6 +671,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }
                 }),
               ],
+            ),
+          ),
+
+          // [新增板块] Stripe 支付与收款设置入口
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            child: Card(
+              color: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                onTap: () {
+                  if (_isLoggedIn) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StripeWalletScreen()),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("请先登录后再设置支付与收款账户")),
+                    );
+                  }
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.blue),
+                ),
+                title: const Text('支付与收款设置 (Stripe)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('管理绑卡预授权与 Stripe Connect 收款', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              ),
             ),
           ),
 

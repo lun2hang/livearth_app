@@ -10,6 +10,7 @@ import 'models/task.dart';
 import 'models/supply.dart';
 import 'models/order.dart';
 import 'models/user_profile.dart';
+import 'models/stripe_model.dart';
 import 'profile_screen.dart'; // 导入新的用户中心页面
 import 'search_screen.dart'; // 导入搜索页面
 import 'publish_task_screen.dart'; // 导入需求发布页
@@ -212,6 +213,44 @@ class MockAPI {
       return UserProfilePublic.fromJson(response.data);
     } catch (e) {
       print("API调用: 获取用户Profile失败 -> $e");
+      return null;
+    }
+  }
+
+  // --- Stripe 支付与收款 API ---
+
+  // 获取当前用户的 Stripe 状态 (是否绑卡、是否绑定 Connect 收款账户、KYC 认证状态)
+  static Future<StripeStatusResponse?> fetchStripeStatus() async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/stripe/connect/status');
+      return StripeStatusResponse.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 获取Stripe状态失败 -> $e");
+      return null;
+    }
+  }
+
+  // 消费者创建 SetupIntent (获取 client_secret)
+  static Future<SetupIntentResponse?> createStripeSetupIntent() async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.post('/stripe/setup-intent');
+      return SetupIntentResponse.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 创建Stripe SetupIntent失败 -> $e");
+      return null;
+    }
+  }
+
+  // 供给者创建/获取 Stripe Connect Express Onboarding 引导链接
+  static Future<ConnectAccountLinkResponse?> createStripeConnectAccountLink() async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.post('/stripe/connect/account-link');
+      return ConnectAccountLinkResponse.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 创建Stripe Connect Account Link失败 -> $e");
       return null;
     }
   }
