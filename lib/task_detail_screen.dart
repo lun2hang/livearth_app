@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geocoding/geocoding.dart';
+import 'user_profile_screen.dart'; // 导入用户Profile视图
 import 'models/task.dart';
 import 'main.dart'; // 导入 MockAPI
 
@@ -227,26 +228,40 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      // 缩小后的发布者信息
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(
-                            backgroundImage: _task.avatar != null && _task.avatar!.isNotEmpty
-                                ? NetworkImage(_task.avatar!)
-                                : null,
-                            radius: 12,
-                            backgroundColor: Colors.grey[200],
-                            child: _task.avatar == null || _task.avatar!.isEmpty
-                                ? const Icon(Icons.person, size: 16, color: Colors.grey)
-                                : null,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _task.nickname ?? "匿名用户",
-                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                          ),
-                        ],
+                      // 缩小后的发布者信息 (点击跳转至个人主页)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserProfileScreen(
+                                userId: _task.userId,
+                                initialNickname: _task.nickname,
+                                initialAvatar: _task.avatar,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: _task.avatar != null && _task.avatar!.isNotEmpty
+                                  ? NetworkImage(_task.avatar!)
+                                  : null,
+                              radius: 12,
+                              backgroundColor: Colors.grey[200],
+                              child: _task.avatar == null || _task.avatar!.isEmpty
+                                  ? const Icon(Icons.person, size: 16, color: Colors.grey)
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _task.nickname ?? "匿名用户",
+                              style: TextStyle(fontSize: 13, color: Colors.grey[700], decoration: TextDecoration.underline),
+                            ),
+                          ],
+                        ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

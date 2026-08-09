@@ -9,6 +9,7 @@ import 'api/dio_client.dart';
 import 'models/task.dart';
 import 'models/supply.dart';
 import 'models/order.dart';
+import 'models/user_profile.dart';
 import 'profile_screen.dart'; // 导入新的用户中心页面
 import 'search_screen.dart'; // 导入搜索页面
 import 'publish_task_screen.dart'; // 导入需求发布页
@@ -199,6 +200,18 @@ class MockAPI {
       return OrderWithDetails.fromJson(response.data);
     } catch (e) {
       print("API调用: 获取订单详情失败 -> $e");
+      return null;
+    }
+  }
+
+  // 获取对外只读的用户公开 Profile (包含历史发布数与成功成交数)
+  static Future<UserProfilePublic?> fetchUserProfile(String userId) async {
+    final dio = DioClient().dio;
+    try {
+      final response = await dio.get('/users/$userId/profile');
+      return UserProfilePublic.fromJson(response.data);
+    } catch (e) {
+      print("API调用: 获取用户Profile失败 -> $e");
       return null;
     }
   }

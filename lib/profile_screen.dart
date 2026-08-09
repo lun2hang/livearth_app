@@ -12,6 +12,7 @@ import 'login_screen.dart'; // 导入新的登录页面
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api/dio_client.dart';
 import 'history_screen.dart'; // 导入历史记录页面
+import 'user_profile_screen.dart'; // 导入用户Profile页面
 import 'main.dart'; // 导入 MockAPI
 import 'order_list_screen.dart'; // 导入订单列表页面
 import 'chat_screen.dart'; // 导入 RtmManager
@@ -650,8 +651,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildGridItem(context, Icons.receipt_long_outlined, '我的历史订单', 
                   _handleOrderHistoryTap, showBadge: true), // 开启红点显示
                 
-                _buildGridItem(context, Icons.bar_chart_outlined, '历史统计数据', 
-                  () => print("UI交互: 点击 '历史统计数据'")),
+                _buildGridItem(context, Icons.bar_chart_outlined, '历史统计数据', () {
+                  if (_userId != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UserProfileScreen(
+                          userId: _userId!,
+                          initialNickname: _username,
+                          initialAvatar: _avatarUrl,
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("请先登录后查看历史统计数据")),
+                    );
+                  }
+                }),
               ],
             ),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'models/order.dart';
 import 'main.dart'; // 导入 MockAPI
+import 'user_profile_screen.dart';
 import 'call_screen.dart';
 import 'chat_screen.dart';
 
@@ -256,21 +257,40 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final isOther = _currentUserId != null && user.id != _currentUserId;
     return Row(
       children: [
-        CircleAvatar(
-          backgroundImage: user.avatar != null ? NetworkImage(user.avatar!) : null,
-          radius: 20,
-          child: user.avatar == null ? const Icon(Icons.person, color: Colors.grey) : null,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserProfileScreen(
+                  userId: user.id,
+                  initialNickname: user.nickname ?? user.username,
+                  initialAvatar: user.avatar,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(user.nickname ?? user.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              CircleAvatar(
+                backgroundImage: user.avatar != null ? NetworkImage(user.avatar!) : null,
+                radius: 20,
+                child: user.avatar == null ? const Icon(Icons.person, color: Colors.grey) : null,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(user.nickname ?? user.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, decoration: TextDecoration.underline)),
+                ],
+              ),
             ],
           ),
         ),
+        const Spacer(),
         if (isOther)
           IconButton(
             icon: ValueListenableBuilder<Map<String, int>>(
