@@ -632,14 +632,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // [区域 2] 中部 1/3: 2x2 功能入口
-          Expanded(
-            flex: 1,
+          // [区域 2] 中部功能网格入口 (统一样式: 3列黑线图标+下部文字)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: GridView.count(
-              crossAxisCount: 2,
-              childAspectRatio: 2.8, // 调整宽高比，使按钮不那么高
-              physics: const NeverScrollableScrollPhysics(), // 禁止网格滚动
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              shrinkWrap: true,
+              crossAxisCount: 3,
+              childAspectRatio: 1.25, // 按钮高度比例
+              physics: const NeverScrollableScrollPhysics(), // 禁止网格内部滚动
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
               children: [
@@ -670,22 +670,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   }
                 }),
-              ],
-            ),
-          ),
 
-          // [新增板块] Stripe 支付与收款设置入口
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-            child: Card(
-              color: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: ListTile(
-                onTap: () {
+                _buildGridItem(context, Icons.payment_outlined, '支付与收款设置', () {
                   if (_isLoggedIn) {
                     Navigator.push(
                       context,
@@ -696,19 +682,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SnackBar(content: Text("请先登录后再设置支付与收款账户")),
                     );
                   }
-                },
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.blue),
-                ),
-                title: const Text('支付与收款设置 (Stripe)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: const Text('管理绑卡预授权与 Stripe Connect 收款', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-              ),
+                }),
+              ],
             ),
           ),
 
