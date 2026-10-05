@@ -1,4 +1,4 @@
-open -a Simulator
+open -a DeviceHub
 flutter devices
 flutter run
 
@@ -6,4 +6,4 @@ bundleID
 com.example.livearthApp
 
 
-测试帐号 wind:winddd
+测试帐号 wind:winddd33

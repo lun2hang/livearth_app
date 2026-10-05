@@ -398,6 +398,13 @@ class _MainScreenState extends State<MainScreen> {
 
   // 初始化全局 RTM 连接
   Future<void> _initGlobalRTM() async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+    if (token == null) {
+      print("ℹ️ [RTM] 用户尚未登录，跳过启动全局 RTM");
+      return;
+    }
+
     try {
       // 获取全局 RTM Token (无需 orderId)
       final data = await DioClient().getRtmToken();
@@ -412,7 +419,7 @@ class _MainScreenState extends State<MainScreen> {
         }
       }
     } catch (e) {
-      print("全局 RTM 初始化跳过 (可能未登录): $e");
+      print("全局 RTM 初始化跳过: $e");
     }
   }
 
